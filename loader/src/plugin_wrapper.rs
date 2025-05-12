@@ -1,6 +1,5 @@
 use libloading::{Library, Symbol};
 use std::{
-    array,
     error::Error,
     ffi::{c_char, c_void, CStr, OsStr},
     fmt::Debug,
