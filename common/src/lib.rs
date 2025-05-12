@@ -5,14 +5,15 @@ pub mod interface {
     pub const DESCRIPTION_IDENT: &[u8] = b"get_description";
     pub const ID_IDENT: &[u8] = b"get_id";
     pub const PLUGIN_IDENT: &[u8] = b"PLUGIN";
+
+    pub const ACTIONS: &[u8] = b"get_actions";
+    pub const VARIABLES: &[u8] = b"get_variables";
 }
 
 #[repr(C)]
 pub struct CPlugin {
-    pub new: unsafe extern "C" fn() -> *mut c_void,
+    pub init: unsafe extern "C" fn() -> *mut c_void,
 
-    // pub get_variables   : unsafe extern "C" fn(state: *mut c_void) -> *mut c_char,
-    // pub get_actions     : unsafe extern "C" fn(state: *mut c_void) -> *mut c_char,
     pub execute_action: unsafe extern "C" fn(state: *mut c_void, id: *const c_char),
     pub update: unsafe extern "C" fn(state: *mut c_void),
 }
@@ -30,8 +31,8 @@ macro_rules! define_plugin {
         const __NAME: &str = concat!($name, "\0");
         const __DESCRIPTION: &str = concat!($description, "\0");
         const __ID: &str = concat!($id, "\0");
-        const __ACTIONS: &[&str] = &$actions;
-        const __VARIABLES: &[&str] = &$variables;
+        const __ACTIONS: &str = concat!($actions, "\0");
+        const __VARIABLES: &str = concat!($variables, "\0");
 
         #[no_mangle]
         pub extern "C" fn get_name() -> *const ::std::os::raw::c_char {
@@ -46,6 +47,16 @@ macro_rules! define_plugin {
         #[no_mangle]
         pub extern "C" fn get_id() -> *const ::std::os::raw::c_char {
             __ID.as_ptr() as _
+        }
+
+        #[no_mangle]
+        pub extern "C" fn get_actions() -> *const ::std::os::raw::c_char {
+            __ACTIONS.as_ptr() as _
+        }
+
+        #[no_mangle]
+        pub extern "C" fn get_variables() -> *const ::std::os::raw::c_char {
+            __VARIABLES.as_ptr() as _
         }
 
         #[no_mangle]

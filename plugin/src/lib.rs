@@ -9,10 +9,10 @@ define_plugin! {
     name: "Plugin",
     description: "A sample plugin.",
     id: "plugin_test",
-    actions: [],
-    variables: [],
+    actions: "hello",
+    variables: "",
     data: CPlugin {
-        new,
+        init,
         execute_action,
         update
     }
@@ -20,7 +20,7 @@ define_plugin! {
 
 struct PluginState {}
 
-unsafe extern "C" fn new() -> *mut c_void {
+unsafe extern "C" fn init() -> *mut c_void {
     let mut state = ManuallyDrop::new(Box::new(PluginState {}));
 
     &mut (**state) as *mut PluginState as _

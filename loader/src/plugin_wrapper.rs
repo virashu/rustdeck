@@ -1,5 +1,6 @@
 use libloading::{Library, Symbol};
 use std::{
+    array,
     error::Error,
     ffi::{c_char, c_void, CStr, OsStr},
     fmt::Debug,
@@ -31,6 +32,8 @@ pub struct Plugin {
     pub name: String,
     pub description: String,
     pub id: String,
+    pub actions: Vec<String>,
+    pub variables: Vec<String>,
 
     plugin_data: CPlugin,
     state: *mut c_void,
@@ -47,43 +50,35 @@ impl Plugin {
             let name = get_str(&lib, interface::NAME_IDENT)?.to_owned();
             let description = get_str(&lib, interface::DESCRIPTION_IDENT)?.to_owned();
             let id = get_str(&lib, interface::ID_IDENT)?.to_owned();
+            let actions = get_str(&lib, interface::ACTIONS)?
+                .split(',')
+                .filter(|s| !s.is_empty())
+                .map(|s| s.to_owned())
+                .collect();
+            let variables = get_str(&lib, interface::VARIABLES)?
+                .split(',')
+                .filter(|s| !s.is_empty())
+                .map(|s| s.to_owned())
+                .collect();
 
             let plugin_data = lib
                 .get::<Symbol<*const CPlugin>>(interface::PLUGIN_IDENT)
                 .unwrap()
                 .read();
 
-            let state = (plugin_data.new)();
+            let state = (plugin_data.init)();
 
             Ok(Self {
                 name,
                 id,
                 description,
+                actions,
+                variables,
                 plugin_data,
                 state,
                 lib,
             })
         }
-    }
-
-    pub fn get_name(&self) -> String {
-        self.name.clone()
-    }
-
-    pub fn get_description(&self) -> String {
-        self.description.clone()
-    }
-
-    pub fn get_id(&self) -> String {
-        self.id.clone()
-    }
-
-    pub fn get_actions(&self) -> String {
-        todo!()
-    }
-
-    pub fn get_variables(&self) -> String {
-        todo!()
     }
 
     pub fn update(&mut self) {
