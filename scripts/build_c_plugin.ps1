@@ -1,0 +1,1 @@
+gcc .\plugin_c\main.c -shared -o .\plugins\plugin_c.dll

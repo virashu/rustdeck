@@ -2,13 +2,14 @@ use std::error::Error;
 use std::fs;
 use std::path::Path;
 
-use plugin_wrapper::PluginWrapper;
+use common::PluginTrait;
+use plugin_wrapper::RsPluginWrapper;
 
-mod plugin_wrapper;
 mod error;
+mod plugin_wrapper;
 
-fn load_plugins_at(path: &Path) -> Result<Vec<PluginWrapper>, Box<dyn Error>> {
-    let mut plugins = Vec::new();
+fn load_plugins_at(path: &Path) -> Result<Vec<Box<dyn PluginTrait>>, Box<dyn Error>> {
+    let mut plugins: Vec<Box<dyn PluginTrait>> = Vec::new();
 
     let dir = fs::read_dir(path)?;
     let entries = dir.flatten();
@@ -20,31 +21,27 @@ fn load_plugins_at(path: &Path) -> Result<Vec<PluginWrapper>, Box<dyn Error>> {
         .collect::<Vec<_>>();
 
     for path in libs {
-        match PluginWrapper::try_load(path) {
+        match RsPluginWrapper::try_load(path) {
             Ok(plugin) => {
-                plugins.push(plugin);
+                plugins.push(Box::new(plugin));
             }
-            Err(_) => {
-                println!("Error loading {:?}", path);
-                // report_error(e);
+            Err(e) => {
+                println!("Error loading {:?}:\n -> {}", path, e);
             }
         }
     }
 
-    println!("Loaded all plugins.");
+    println!("Loaded plugins ({})", plugins.len());
     Ok(plugins)
 }
 
 fn main() {
     let plugins = load_plugins_at(Path::new("./plugins")).unwrap();
 
-    println!("Trying to read all plugins' names outside loader");
-
     for (i, plugin) in plugins.iter().enumerate() {
-        println!("[{}] =====", i + 1);
-        println!("Name: {}", plugin.get_name());
+        print!("{}) ", i + 1);
+        println!("{}", plugin.get_name());
     }
-    println!("=========");
 
     println!("OK");
 }

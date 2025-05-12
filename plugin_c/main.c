@@ -1,41 +1,25 @@
-#include <stdlib.h>
-
 #define export __declspec(dllexport)
 
-export struct Plugin {
-  char* (*get_name)(struct Plugin*);
-  char* (*get_description)(struct Plugin*);
-  char* (*get_id)(struct Plugin*);
-  char* (*get_actions)(struct Plugin*);
-  char* (*get_variables)(struct Plugin*);
-  void (*execute_action)(struct Plugin*, char* id);
-  void (*update)(struct Plugin*);
+const char *__NAME = "CLang Plugin";
+const char *__DESCRIPTION = "CLang Plugin";
+const char *__ID = "CLang Plugin";
+
+export const char *get_name() { return __NAME; }
+
+export const char *get_description() { return __DESCRIPTION; }
+export const char *get_id() { return __ID; }
+
+struct Plugin {
+  void *(*new)(void);
+
+  void (*update)(void *state);
+  void (*execute_action)(void *state, char *id);
 };
 
-char* get_name(struct Plugin* self) { return "C Plugin"; }
+void *new() { return 0; }
 
-char* get_description(struct Plugin* self) {}
+void update(void *state) { return; }
 
-char* get_id(struct Plugin* self) {}
+void execute_action(void *state, char *id) { return; }
 
-char* get_actions(struct Plugin* self) {}
-
-char* get_variables(struct Plugin* self) {}
-
-void execute_action(struct Plugin* self, char* id) {}
-
-void update(struct Plugin* self) {}
-
-export void* make() {
-  struct Plugin* plugin = malloc(sizeof(struct Plugin));
-
-  plugin->get_name = &get_name;
-  plugin->get_description = &get_description;
-  plugin->get_id = &get_id;
-  plugin->get_actions = &get_actions;
-  plugin->get_variables = &get_variables;
-  plugin->execute_action = &execute_action;
-  plugin->update = &update;
-
-  return plugin;
-}
+export const struct Plugin PLUGIN = {new, update, execute_action};

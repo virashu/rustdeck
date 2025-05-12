@@ -1,9 +1,13 @@
+use std::fmt::write;
+
 #[allow(dead_code, reason = "WIP")]
-pub enum ErrorKind {
+enum ErrorKind {
     NotALibrary = 193,
 }
 
-pub fn report_error(e: libloading::Error) {
+pub fn report_libloading_error(e: &libloading::Error) {
+    println!("Libloading error!");
+
     match e {
         libloading::Error::LoadLibraryExW { source } => {
             // source.0.raw_os_error();
@@ -36,3 +40,19 @@ pub fn report_error(e: libloading::Error) {
         }
     }
 }
+
+#[derive(Debug)]
+pub struct PluginLoadingError {
+    pub detail: Option<String>,
+}
+
+impl std::fmt::Display for PluginLoadingError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match &self.detail {
+            Some(d) => write!(f, "Plugin loading error: {}", d),
+            None => write!(f, "Plugin loading error"),
+        }
+    }
+}
+
+impl std::error::Error for PluginLoadingError {}
