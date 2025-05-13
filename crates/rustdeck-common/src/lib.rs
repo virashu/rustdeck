@@ -14,8 +14,10 @@ pub mod interface {
 pub struct CPlugin {
     pub init: unsafe extern "C" fn() -> *mut c_void,
 
-    pub execute_action: unsafe extern "C" fn(state: *mut c_void, id: *const c_char),
     pub update: unsafe extern "C" fn(state: *mut c_void),
+
+    pub run_action: unsafe extern "C" fn(state: *mut c_void, id: *const c_char),
+    pub get_variable: unsafe extern "C" fn(state: *mut c_void, id: *const c_char) -> *mut c_char,
 }
 
 #[macro_export]
