@@ -72,9 +72,9 @@ impl Deck {
     }
 
     pub fn run(self) {
-        let s = Arc::new(self);
+        let self_ = Arc::new(self);
 
-        let c = s.clone();
+        let c = self_.clone();
         thread::spawn(move || {
             Self::server_thread(&c);
         });
@@ -83,9 +83,9 @@ impl Deck {
 
         loop {
             if inst.elapsed() > config::UPDATE_INTERVAL {
-                s.plugins.values().for_each(|p| p.lock().unwrap().update());
+                self_.plugins.values().for_each(|p| p.lock().unwrap().update());
 
-                s.try_run_action("plugin_test.increment");
+                self_.try_run_action("plugin_test.increment").unwrap();
 
                 inst = Instant::now();
             }

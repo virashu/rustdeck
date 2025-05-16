@@ -1,56 +1,47 @@
-#[allow(dead_code, reason = "WIP")]
-enum ErrorKind {
-    NotALibrary = 193,
+#[derive(Debug)]
+pub enum PluginLoadError {
+    NotALibrary(libloading::Error),
+    GenericLibError(libloading::Error),
+    SymbolError(std::str::Utf8Error),
 }
 
-pub fn report_libloading_error(e: &libloading::Error) {
-    tracing::error!("Libloading error!");
+impl From<libloading::Error> for PluginLoadError {
+    fn from(value: libloading::Error) -> Self {
+        match value {
+            libloading::Error::LoadLibraryExW { ref source } => {
+                let err_code: i32 = format!("{:?}", source)
+                    .split_once(",")
+                    .unwrap()
+                    .0
+                    .strip_prefix("Os { code: ")
+                    .unwrap()
+                    .parse()
+                    .unwrap();
 
-    match e {
-        libloading::Error::LoadLibraryExW { source } => {
-            // source.0.raw_os_error();
-            let err_code_1 = std::io::Error::last_os_error().raw_os_error();
-
-            // This freaking thing cannot just give me the number, it only has format as public...
-            let f = format!("{:?}", &source);
-            let err_code_2: i32 = f
-                .split_once(",")
-                .unwrap()
-                .0
-                .strip_prefix("Os { code: ")
-                .unwrap()
-                .parse()
-                .unwrap();
-
-            let err_code = err_code_1.unwrap_or(err_code_2);
-
-            match err_code {
-                193 => {
-                    tracing::error!("Not a library");
-                }
-                _ => {
-                    tracing::error!("{:?}", source);
+                match err_code {
+                    193 => Self::NotALibrary(value),
+                    _ => Self::GenericLibError(value),
                 }
             }
-        }
-        _ => {
-            tracing::error!("{:?}", e);
+            _ => Self::GenericLibError(value),
         }
     }
 }
 
-#[derive(Debug)]
-pub struct PluginLoadingError {
-    pub detail: Option<String>,
+impl From<std::str::Utf8Error> for PluginLoadError {
+    fn from(value: std::str::Utf8Error) -> Self {
+        Self::SymbolError(value)
+    }
 }
 
-impl std::fmt::Display for PluginLoadingError {
+impl std::fmt::Display for PluginLoadError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match &self.detail {
-            Some(d) => write!(f, "Plugin loading error: {}", d),
-            None => write!(f, "Plugin loading error"),
+        match self {
+            PluginLoadError::NotALibrary(e) => write!(f, "Not a library: {}", e),
+            PluginLoadError::GenericLibError(e) => write!(f, "Error loading library: {}", e),
+            PluginLoadError::SymbolError(e) => write!(f, "Symbol error: {}", e),
         }
     }
 }
 
-impl std::error::Error for PluginLoadingError {}
+impl std::error::Error for PluginLoadError {}

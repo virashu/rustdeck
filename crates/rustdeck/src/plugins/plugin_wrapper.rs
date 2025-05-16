@@ -1,18 +1,15 @@
 use libloading::{Library, Symbol};
 use std::{
-    error::Error,
     ffi::{c_char, c_void, CStr, CString, OsStr},
     fmt::Debug,
 };
 
 use rustdeck_common::{interface, CPlugin};
 
-use crate::error::report_libloading_error;
-
 unsafe fn get_str<'a>(
     library: &'a Library,
     ident: &[u8],
-) -> Result<&'a str, Box<dyn std::error::Error>> {
+) -> Result<&'a str, crate::error::PluginLoadError> {
     // First, the string exported by the plugin is read. For FFI-safety and
     // thread-safety, this must be a function that returns `*const c_char`.
     let name_fn = library.get::<extern "C" fn() -> *const c_char>(ident)?;
@@ -47,14 +44,14 @@ pub struct Plugin {
     plugin_data: CPlugin,
     state: *mut c_void,
 
-    #[allow(dead_code, reason = "`plugin` depends on `lib`")]
+    #[allow(dead_code, reason = "plugin depends on library")]
     lib: Library,
 }
 
 impl Plugin {
-    pub fn try_load<P: AsRef<OsStr> + Debug>(path: P) -> Result<Self, Box<dyn Error>> {
+    pub fn try_load<P: AsRef<OsStr> + Debug>(path: P) -> Result<Self, crate::error::PluginLoadError> {
         unsafe {
-            let lib = Library::new(path).inspect_err(report_libloading_error)?;
+            let lib = Library::new(path)?;
 
             let name = get_str(&lib, interface::NAME_IDENT)?.to_owned();
             let description = get_str(&lib, interface::DESCRIPTION_IDENT)?.to_owned();
