@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::thread;
-use std::time::{Duration, Instant};
+use std::time::Instant;
 
 use crate::plugins::{self, Plugin};
 
@@ -22,9 +22,32 @@ enum DeckButtonStyleTextAlign {
     Right,
 }
 
+impl std::fmt::Display for DeckButtonStyleTextAlign {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                Self::Center => "center",
+                Self::Left => "left",
+                Self::Right => "right",
+            }
+        )
+    }
+}
+
 struct DeckButtonStyle {
     text_align: DeckButtonStyleTextAlign,
     text_size: u32,
+}
+
+impl DeckButtonStyle {
+    pub fn serialize(&self) -> String {
+        format!(
+            r#"{{"text_size": {}, "text_align": "{}"}}"#,
+            self.text_size, self.text_align
+        )
+    }
 }
 
 impl Default for DeckButtonStyle {
@@ -42,8 +65,68 @@ struct DeckButton {
     content: String,
 }
 
+static BUTTON_VAR_REGEX: std::sync::LazyLock<regex::Regex> = std::sync::LazyLock::new(|| {
+    regex::Regex::new(r"\{(?<v>[a-zA-Z0-9_]+\.[a-zA-Z0-9_]+)\}").unwrap()
+});
+
+impl DeckButton {
+    pub fn render_content(&self, deck: &Arc<Deck>) -> String {
+        // TODO: find variables in `content` and interpolate with values
+
+        let input = &self.content;
+
+        let a: Vec<(String, String)> = BUTTON_VAR_REGEX
+            .captures_iter(input)
+            .map(|m| {
+                let ident = &m["v"];
+                let value = deck.render_variable(ident);
+                (ident.to_owned(), value)
+            })
+            .collect();
+
+        let mut output = String::from(input);
+
+        for (s, var) in a {
+            output = output.replace(&format!("{{{s}}}"), &var);
+        }
+
+        output
+    }
+
+    pub fn serialize(&self, pos: (u32, u32), deck: &Arc<Deck>) -> String {
+        format!(
+            r#"{{"position": {{"y": {}, "x": {}}}, "style": {}, "content": "{}"}}"#,
+            pos.0,
+            pos.1,
+            self.style.serialize(),
+            self.render_content(deck)
+        )
+    }
+}
+
+struct DeckServer {
+    deck: Arc<Deck>,
+}
+
+impl DeckServer {
+    pub const fn new(deck: Arc<Deck>) -> Self {
+        Self { deck }
+    }
+
+    pub fn run(&self) {
+        let mut app = saaba::App::new();
+
+        let deck_ref = self.deck.clone();
+        app.get("/", move |_| {
+            saaba::Response::from(Deck::serialize_buttons(deck_ref.clone())).with_header("Content-Type", "application/json")
+        });
+
+        app.run("0.0.0.0", 3000).unwrap();
+    }
+}
+
 pub struct Deck {
-    buttons: HashMap<(usize, usize), DeckButton>,
+    buttons: HashMap<(u32, u32), DeckButton>,
     plugins: HashMap<String, Mutex<Plugin>>,
 }
 
@@ -56,19 +139,20 @@ impl Deck {
             .collect();
 
         Ok(Self {
-            buttons: HashMap::new(),
+            buttons: HashMap::from([(
+                (0, 0),
+                DeckButton {
+                    style: DeckButtonStyle::default(),
+                    content: String::from("Counter: {plugin_test.counter}"),
+                },
+            )]),
             plugins,
         })
     }
 
-    fn server_thread(&self) {
-        tracing::debug!("Started render thread");
-
-        loop {
-            tracing::info!("{}", self.render_variable("plugin_test.counter"));
-
-            thread::sleep(Duration::from_millis(100));
-        }
+    fn server_thread(self: Arc<Self>) {
+        let server = DeckServer::new(self);
+        server.run();
     }
 
     pub fn run(self) {
@@ -76,14 +160,17 @@ impl Deck {
 
         let c = self_.clone();
         thread::spawn(move || {
-            Self::server_thread(&c);
+            Self::server_thread(c);
         });
 
         let mut inst = Instant::now();
 
         loop {
             if inst.elapsed() > config::UPDATE_INTERVAL {
-                self_.plugins.values().for_each(|p| p.lock().unwrap().update());
+                self_
+                    .plugins
+                    .values()
+                    .for_each(|p| p.lock().unwrap().update());
 
                 self_.try_run_action("plugin_test.increment").unwrap();
 
@@ -97,14 +184,13 @@ impl Deck {
         let plugin = self
             .plugins
             .get(plug_id)
-            .ok_or(format!("Cannot find plugin: `{}`", plug_id))?
+            .ok_or_else(|| format!("Cannot find plugin: `{plug_id}`"))?
             .lock()
             .unwrap();
 
         if !plugin.variables.contains(&i.to_string()) {
             return Err(format!(
-                "Plugin `{}` does not provide variable `{}`",
-                plug_id, i
+                "Plugin `{plug_id}` does not provide variable `{i}`"
             ));
         }
 
@@ -113,29 +199,37 @@ impl Deck {
 
     fn render_variable(&self, id: &str) -> String {
         match self.try_resolve_variable(id) {
-            Ok(s) => s,
-            Err(s) => s,
+            Err(s) | Ok(s) => s,
         }
     }
 
     fn try_run_action(&self, id: &str) -> Result<(), String> {
         let (plug_id, i) = id.split_once('.').ok_or("Wrong action format")?;
-        let plugin = self
-            .plugins
-            .get(plug_id)
-            .ok_or(format!("Cannot find plugin: `{}`", plug_id))?
-            .lock()
-            .unwrap();
+        {
+            let plugin = self
+                .plugins
+                .get(plug_id)
+                .ok_or_else(|| format!("Cannot find plugin: `{plug_id}`"))?
+                .lock()
+                .unwrap();
 
-        if !plugin.actions.contains(&i.to_string()) {
-            return Err(format!(
-                "Plugin `{}` does not provide action `{}`",
-                plug_id, i
-            ));
+            if !plugin.actions.contains(&i.to_string()) {
+                return Err(format!("Plugin `{plug_id}` does not provide action `{i}`"));
+            }
+
+            plugin.run_action(i.to_string());
         }
 
-        plugin.run_action(i.to_string());
-
         Ok(())
+    }
+
+    fn serialize_buttons(self: Arc<Self>) -> String {
+        let deck_ref = self.clone();
+        let buttons: Vec<String> = self
+            .buttons
+            .iter()
+            .map(|(k, b)| b.serialize(k.to_owned(), &deck_ref.clone()))
+            .collect();
+        format!(r#"{{"buttons": [{}]}}"#, buttons.join(", "))
     }
 }

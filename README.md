@@ -5,7 +5,7 @@
   remotely, using mobile device
 </p>
 
-#### Similar apps:
+#### Inspired by:
   - [Stream Deck](https://www.elgato.com/us/en/s/welcome-to-stream-deck)
   - [Macro Deck](https://macro-deck.app/)
 
