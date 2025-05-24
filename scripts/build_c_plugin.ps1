@@ -1,1 +1,0 @@
-gcc .\examples\plugins\sample_c_plugin\main.c -shared -o .\plugins\sample_c_plugin.deckplugin
