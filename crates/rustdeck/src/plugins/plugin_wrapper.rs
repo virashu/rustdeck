@@ -41,7 +41,7 @@ pub struct Plugin {
     pub actions: Vec<String>,
     pub variables: Vec<String>,
 
-    plugin_data: CPlugin,
+    inner: CPlugin,
     state: *mut c_void,
 
     #[allow(dead_code, reason = "plugin depends on library")]
@@ -61,15 +61,15 @@ impl Plugin {
             let id = get_str(&lib, interface::ID_IDENT)?.to_owned();
             let actions = get_str(&lib, interface::ACTIONS)?
                 .split(',')
-                .map(|s| s.trim())
+                .map(str::trim)
                 .filter(|s| !s.is_empty())
-                .map(|s| s.to_owned())
+                .map(ToString::to_string)
                 .collect();
             let variables = get_str(&lib, interface::VARIABLES)?
                 .split(',')
-                .map(|s| s.trim())
+                .map(str::trim)
                 .filter(|s| !s.is_empty())
-                .map(|s| s.to_owned())
+                .map(ToString::to_string)
                 .collect();
 
             let plugin_data = lib
@@ -85,7 +85,7 @@ impl Plugin {
                 id,
                 actions,
                 variables,
-                plugin_data,
+                inner: plugin_data,
                 state,
                 lib,
             })
@@ -93,12 +93,12 @@ impl Plugin {
     }
 
     pub fn update(&mut self) {
-        unsafe { (self.plugin_data.update)(self.state) }
+        unsafe { (self.inner.update)(self.state) }
     }
 
     pub fn run_action(&self, id: String) {
         unsafe {
-            (self.plugin_data.run_action)(
+            (self.inner.run_action)(
                 self.state,
                 CString::new(id).unwrap().as_ptr().cast::<c_char>(),
             );
@@ -107,7 +107,7 @@ impl Plugin {
 
     pub fn get_variable(&self, id: String) -> String {
         unsafe {
-            let p = (self.plugin_data.get_variable)(
+            let p = (self.inner.get_variable)(
                 self.state,
                 CString::new(id).unwrap().as_ptr().cast::<c_char>(),
             );
