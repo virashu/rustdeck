@@ -202,7 +202,10 @@ impl Deck {
     }
 
     fn try_run_action(&self, id: &str) -> Result<(), String> {
-        let (plug_id, i) = id.split_once('.').ok_or("Wrong action format")?;
+        let (plug_id, i) = id
+            .split_once('.')
+            .ok_or_else(|| format!("Wrong action format: `{id}`"))?;
+
         {
             let plugin = self
                 .plugins

@@ -49,7 +49,10 @@ pub struct Plugin {
 }
 
 impl Plugin {
-    pub fn try_load<P: AsRef<OsStr> + Debug>(path: P) -> Result<Self, crate::error::PluginLoadError> {
+    pub fn try_load<P>(path: P) -> Result<Self, crate::error::PluginLoadError>
+    where
+        P: AsRef<OsStr> + Debug,
+    {
         unsafe {
             let lib = Library::new(path)?;
 
@@ -58,11 +61,13 @@ impl Plugin {
             let id = get_str(&lib, interface::ID_IDENT)?.to_owned();
             let actions = get_str(&lib, interface::ACTIONS)?
                 .split(',')
+                .map(|s| s.trim())
                 .filter(|s| !s.is_empty())
                 .map(|s| s.to_owned())
                 .collect();
             let variables = get_str(&lib, interface::VARIABLES)?
                 .split(',')
+                .map(|s| s.trim())
                 .filter(|s| !s.is_empty())
                 .map(|s| s.to_owned())
                 .collect();
@@ -76,8 +81,8 @@ impl Plugin {
 
             Ok(Self {
                 name,
-                id,
                 description,
+                id,
                 actions,
                 variables,
                 plugin_data,
@@ -95,8 +100,8 @@ impl Plugin {
         unsafe {
             (self.plugin_data.run_action)(
                 self.state,
-                CString::new(id).unwrap().as_ptr() as *const c_char,
-            )
+                CString::new(id).unwrap().as_ptr().cast::<c_char>(),
+            );
         }
     }
 
@@ -104,7 +109,7 @@ impl Plugin {
         unsafe {
             let p = (self.plugin_data.get_variable)(
                 self.state,
-                CString::new(id).unwrap().as_ptr() as *const c_char,
+                CString::new(id).unwrap().as_ptr().cast::<c_char>(),
             );
             read_drop_pointer(p)
         }
