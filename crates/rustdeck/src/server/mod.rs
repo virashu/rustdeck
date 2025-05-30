@@ -1,2 +1,2 @@
-pub mod http_axum;
+pub mod http;
 pub mod websocket;

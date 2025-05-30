@@ -1,8 +1,8 @@
-use parking_lot::{Mutex, RwLock};
+use parking_lot::RwLock;
 use std::collections::HashMap;
 use std::time::Instant;
 
-use crate::buttons::{DeckButton, DeckButtonPos, DeckButtonUpdate, RenderedDeckButton};
+use crate::buttons::{DeckButton, DeckButtonUpdate, RenderedDeckButton};
 use crate::config::DeckConfig;
 use crate::plugins::PluginStore;
 
@@ -111,6 +111,7 @@ pub struct Deck {
     screens: HashMap<String, RwLock<ButtonScreen>>,
     plugin_store: PluginStore,
     icons: HashMap<String, String>,
+    deck_actions: Vec<String>,
 }
 
 impl Deck {
@@ -132,6 +133,7 @@ impl Deck {
             plugin_store,
             config: mock::mock_config(),
             icons: HashMap::from([("test_icon".into(), "icons/test_icon.png".into())]),
+            deck_actions: vec![String::from("deck.switch_screen")],
         })
     }
 
@@ -192,15 +194,15 @@ impl Deck {
         self.icons.get(id.as_ref())
     }
 
-    fn get_available_screens(&self) -> Vec<String> {
-        self.screens.keys().map(ToOwned::to_owned).collect()
-    }
-
     //
     // Getters
     //
     pub fn get_config(&self) -> DeckConfig {
         self.config.clone()
+    }
+
+    pub fn get_available_screens(&self) -> Vec<String> {
+        self.screens.keys().map(ToOwned::to_owned).collect()
     }
 
     pub fn get_rendered_screen(&self) -> DeckScreen {
@@ -223,65 +225,28 @@ impl Deck {
             .unwrap_or_default()
     }
 
-    //
-    // Serialization
-    //
-    pub fn serialize_config(&self) -> String {
-        format!(
-            r#"{{"cols": {}, "rows": {}}}"#,
-            self.config.cols, self.config.rows
-        )
+    pub fn get_all_variables(&self) -> HashMap<String, String> {
+        self.plugin_store.get_all_variables()
     }
 
-    pub fn serialize_buttons(&self) -> String {
-        let buttons: Vec<String> = self
-            .get_current_screen()
-            .read()
-            .iter()
-            .map(|(k, b)| b.serialize(k.to_owned(), &self.plugin_store))
-            .collect();
-
-        format!(
-            r#"{{"screen": "{}", "buttons": [{}]}}"#,
-            self.current_screen_id.read(),
-            buttons.join(", ")
-        )
+    pub fn get_all_actions_names(&self) -> Vec<String> {
+        [
+            self.plugin_store.get_all_actions_names(),
+            self.deck_actions.clone(),
+        ]
+        .concat()
     }
 
-    pub fn serialize_actions(&self) -> String {
-        format!(
-            "[{}]",
-            self.plugin_store
-                .get_all_actions_names()
-                .iter()
-                .map(|s| format!(r#""{s}""#))
-                .collect::<Vec<_>>()
-                .join(", ")
-        )
-    }
-
-    pub fn serialize_variables(&self) -> String {
-        format!(
-            "[{}]",
-            self.plugin_store
-                .get_all_variables()
-                .iter()
-                .map(|(k, v)| format!(r#""{k}": "{v}""#))
-                .collect::<Vec<_>>()
-                .join(", ")
-        )
-    }
-
-    pub fn serialize_button_with_fallback(&self, pos: (u32, u32)) -> String {
-        self.get_current_screen().read().get(&pos).map_or_else(
-            || DeckButton::default().serialize(pos, &self.plugin_store),
-            |b| b.serialize(pos, &self.plugin_store),
-        )
-    }
-
+    #[allow(clippy::significant_drop_tightening)] // Bro tweaking
     pub fn update_button(&self, pos: (u32, u32), update: DeckButtonUpdate) {
         let mut lock = self.get_current_screen().write();
-        let button = lock.get_mut(&pos).unwrap();
+        let button;
+        if let Some(b) = lock.get_mut(&pos) {
+            button = b;
+        } else {
+            lock.insert(pos, DeckButton::default());
+            button = lock.get_mut(&pos).unwrap();
+        }
 
         button.template = update.template;
         button.on_click_action = update.on_click_action;

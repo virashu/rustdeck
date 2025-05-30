@@ -9,7 +9,7 @@ mod config;
 use std::{sync::Arc, thread};
 
 use deck::Deck;
-use server::http_axum;
+use server::http;
 
 fn init_dirs() {
     std::fs::create_dir_all("./plugins").unwrap();
@@ -29,7 +29,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let deck_ref = deck.clone();
     let deck_thread = thread::spawn(move || deck_ref.run());
 
-    http_axum::build_and_run_thread(&deck, "0.0.0.0", 8989);
+    http::build_and_run_thread(&deck, "0.0.0.0", 8989);
 
     deck_thread.join().unwrap();
 

@@ -1,9 +1,9 @@
-use std::{sync::Arc, thread};
+use std::{collections::HashMap, sync::Arc, thread};
 
 use axum::{
     extract::{Path, State},
-    http::{header, StatusCode},
-    response::{IntoResponse, Response},
+    http::{header, Method, StatusCode},
+    response::IntoResponse,
     routing::{get, post},
     Json, Router,
 };
@@ -72,6 +72,18 @@ async fn update_button(
     StatusCode::OK
 }
 
+async fn list_variables(State(state): State<AxumState>) -> Json<HashMap<String, String>> {
+    Json(state.deck.get_all_variables())
+}
+
+async fn list_actions(State(state): State<AxumState>) -> Json<Vec<String>> {
+    Json(state.deck.get_all_actions_names())
+}
+
+async fn list_screens(State(state): State<AxumState>) -> Json<Vec<String>> {
+    Json(state.deck.get_available_screens())
+}
+
 async fn build_and_run<S>(deck_ref: Arc<Deck>, host: S, port: u32)
 where
     S: AsRef<str>,
@@ -80,7 +92,8 @@ where
 
     let cors = CorsLayer::new()
         .allow_origin(Any)
-        .allow_methods([axum::http::Method::GET, axum::http::Method::POST]);
+        .allow_methods([Method::GET, Method::POST, Method::PATCH, Method::OPTIONS])
+        .allow_headers([header::CONTENT_TYPE]);
 
     let app = Router::new()
         .route("/api/client/config", get(get_config))
@@ -89,8 +102,11 @@ where
         .route("/api/client/icon/{id}", get(get_icon))
         .route(
             "/api/config/button/{y}/{x}",
-            get(get_button).put(update_button),
+            get(get_button).patch(update_button),
         )
+        .route("/api/config/list/actions", get(list_actions))
+        .route("/api/config/list/variables", get(list_variables))
+        .route("/api/config/list/screens", get(list_screens))
         .with_state(state)
         .layer(cors)
         .layer(TraceLayer::new_for_http());

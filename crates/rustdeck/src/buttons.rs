@@ -34,20 +34,26 @@ pub struct DeckButtonStyle {
     pub text_size: u32,
 }
 
-impl DeckButtonStyle {
-    pub fn serialize(&self) -> String {
-        format!(
-            r#"{{"text_size": {}, "text_align": "{}"}}"#,
-            self.text_size, self.text_align
-        )
-    }
-}
-
 impl Default for DeckButtonStyle {
     fn default() -> Self {
         Self {
             text_size: 24,
             text_align: DeckButtonStyleTextAlign::default(),
+        }
+    }
+}
+
+#[derive(Clone, Debug, serde::Serialize)]
+pub struct DeckButtonPos {
+    pub x: u32,
+    pub y: u32,
+}
+
+impl DeckButtonPos {
+    pub const fn from_yx(value: (u32, u32)) -> Self {
+        Self {
+            y: value.0,
+            x: value.1,
         }
     }
 }
@@ -67,21 +73,6 @@ pub struct DeckButton {
     pub icon: Option<String>,
     pub template: String,
     pub on_click_action: Option<String>,
-}
-
-#[derive(Clone, Debug, serde::Serialize)]
-pub struct DeckButtonPos {
-    pub x: u32,
-    pub y: u32,
-}
-
-impl DeckButtonPos {
-    pub const fn from_yx(value: (u32, u32)) -> Self {
-        Self {
-            y: value.0,
-            x: value.1,
-        }
-    }
 }
 
 impl DeckButton {
@@ -104,22 +95,6 @@ impl DeckButton {
         }
 
         output
-    }
-
-    pub fn serialize(&self, pos: (u32, u32), plugins: &PluginStore) -> String {
-        format!(
-            r#"{{"position": {{"y": {}, "x": {}}}, "style": {}, "content": "{}", "icon": {}, "action": {}}}"#,
-            pos.0,
-            pos.1,
-            self.style.serialize(),
-            self.render_content(plugins),
-            self.icon
-                .as_ref()
-                .map_or("null".into(), |s| format!("\"{s}\"")),
-            self.on_click_action
-                .as_ref()
-                .map_or_else(|| "null".into(), |s| format!("\"{s}\""))
-        )
     }
 
     pub fn render(&self, pos: (u32, u32), plugins: &PluginStore) -> RenderedDeckButton {
