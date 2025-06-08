@@ -29,7 +29,7 @@ struct SerializedDeckButton {
 }
 
 impl SerializedDeckButton {
-    pub fn to_deck_button(self) -> ((u32, u32), DeckButton) {
+    pub fn into_deck_button(self) -> ((u32, u32), DeckButton) {
         (
             self.position.as_yx(),
             DeckButton {
@@ -59,12 +59,12 @@ struct SerializedDeckButtonScreen {
 }
 
 impl SerializedDeckButtonScreen {
-    fn to_deck_button_screen(self) -> (String, DeckButtonScreen) {
+    fn into_deck_button_screen(self) -> (String, DeckButtonScreen) {
         (
             self.id,
             self.buttons
                 .into_iter()
-                .map(SerializedDeckButton::to_deck_button)
+                .map(SerializedDeckButton::into_deck_button)
                 .collect(),
         )
     }
@@ -109,7 +109,7 @@ impl From<SerializedDeckConfig> for DeckConfig {
             screens: value
                 .screens
                 .into_iter()
-                .map(SerializedDeckButtonScreen::to_deck_button_screen)
+                .map(SerializedDeckButtonScreen::into_deck_button_screen)
                 .collect(),
         }
     }

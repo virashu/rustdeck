@@ -23,8 +23,22 @@ fn init_dirs() {
     fs::create_dir_all(ICONS_DIR).unwrap();
 }
 
-#[cfg(not(feature = "mock"))]
 fn load_config() -> DeckConfig {
+    #[cfg(feature = "mock")]
+    {
+        use std::collections::HashMap;
+
+        use crate::mock;
+
+        return DeckConfig {
+            deck: mock::mock_config(),
+            screens: HashMap::from([
+                ("default".into(), mock::mock_buttons_screen_1()),
+                ("screen_2".into(), mock::mock_buttons_screen_2()),
+            ]),
+        };
+    }
+
     if !Path::new(CONFIG_PATH).exists() {
         let config = DeckConfig::default();
         let config_ser = serde_json::to_string(&config).unwrap();
@@ -35,21 +49,6 @@ fn load_config() -> DeckConfig {
 
     let config_ser = fs::read(CONFIG_PATH).expect("Failed to read config");
     serde_json::from_slice(&config_ser).expect("Failed to deserialize config")
-}
-
-#[cfg(feature = "mock")]
-fn load_config() -> DeckConfig {
-    use std::collections::HashMap;
-
-    use crate::mock;
-
-    DeckConfig {
-        deck: mock::mock_config(),
-        screens: HashMap::from([
-            ("default".into(), mock::mock_buttons_screen_1()),
-            ("screen_2".into(), mock::mock_buttons_screen_2()),
-        ]),
-    }
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {

@@ -5,12 +5,6 @@ use std::sync::RwLock;
 
 use super::{load_plugins_at, Plugin};
 
-pub enum ActionError {
-    WrongActionFormat(String),
-    PluginNotFound(String),
-    ActionNotFound(String),
-}
-
 pub struct PluginStore {
     plugins: HashMap<String, RwLock<Plugin>>,
 }

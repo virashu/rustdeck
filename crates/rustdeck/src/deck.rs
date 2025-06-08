@@ -26,6 +26,8 @@ pub struct Deck {
     screens: HashMap<String, RwLock<DeckButtonScreen>>,
     plugin_store: PluginStore,
     icons: HashMap<String, String>,
+    #[allow(clippy::struct_field_names)]
+    /// Actions of the deck itself
     deck_actions: Vec<String>,
 }
 
