@@ -1,0 +1,96 @@
+{
+  "deck": {
+    "rows": 3,
+    "cols": 5
+  },
+  "screens": [
+    {
+      "id": "default",
+      "buttons": [
+        {
+          "position": {
+            "x": 1,
+            "y": 1
+          },
+          "style": {
+            "text_align": "right",
+            "text_size": 24
+          },
+          "icon": null,
+          "template": "Counter: {plugin_test.counter}",
+          "on_click_action": "plugin_test.increment"
+        },
+        {
+          "position": {
+            "x": 4,
+            "y": 1
+          },
+          "style": {
+            "text_align": "center",
+            "text_size": 24
+          },
+          "icon": null,
+          "template": "Switch to screen 2",
+          "on_click_action": "deck.switch_screen:screen_2"
+        },
+        {
+          "position": {
+            "x": 3,
+            "y": 2
+          },
+          "style": {
+            "text_align": "center",
+            "text_size": 24
+          },
+          "icon": null,
+          "template": "State: {rustdeck_media.state}\\nTitle: '{rustdeck_media.title}'\\nArtist: '{rustdeck_media.artist}'",
+          "on_click_action": "rustdeck_media.play_pause"
+        },
+        {
+          "position": {
+            "x": 2,
+            "y": 1
+          },
+          "style": {
+            "text_align": "left",
+            "text_size": 24
+          },
+          "icon": null,
+          "template": "Clear counter",
+          "on_click_action": "plugin_test.clear"
+        },
+        {
+          "position": {
+            "x": 3,
+            "y": 1
+          },
+          "style": {
+            "text_align": "center",
+            "text_size": 24
+          },
+          "icon": "test_icon",
+          "template": "",
+          "on_click_action": null
+        }
+      ]
+    },
+    {
+      "id": "screen_2",
+      "buttons": [
+        {
+          "position": {
+            "x": 1,
+            "y": 1
+          },
+          "style": {
+            "text_align": "center",
+            "text_size": 24
+          },
+          "icon": null,
+          "template": "Switch to screen 1",
+          "on_click_action": "deck.switch_screen:default"
+        }
+      ]
+    }
+  ]
+}

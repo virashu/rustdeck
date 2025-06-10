@@ -1,5 +1,8 @@
 **/target/
-/plugins/
-/icons/
 .idea/
 dist/
+
+# Runtime
+/plugins/
+/icons/
+/config.json

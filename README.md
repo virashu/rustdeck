@@ -1,4 +1,4 @@
-<h1 style="text-align: center">Rust Deck</h1>
+<h1 style="text-align: center">Rust Deck 🖲️</h1>
 
 <p style="text-align: center">
   An application to control PC behavior
