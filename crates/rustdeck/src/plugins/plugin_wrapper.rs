@@ -22,6 +22,10 @@ unsafe fn get_str<'a>(library: &'a Library, ident: &[u8]) -> Result<&'a str, Plu
 }
 
 unsafe fn read_drop_pointer(ptr: *mut c_char) -> String {
+    if ptr.is_null() {
+        return String::new();
+    }
+
     let c_str: &CStr = CStr::from_ptr(ptr);
     let str_slice: &str = c_str.to_str().unwrap();
     let string = str_slice.to_owned();
