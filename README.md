@@ -13,4 +13,21 @@
   - [Stream Deck](https://www.elgato.com/us/en/s/welcome-to-stream-deck)
   - [Macro Deck](https://macro-deck.app/)
 
+## Build
 
+### Taskfile
+
+Project uses `Taskfile`
+
+Run this command to produce `dist/rustdeck.zip` package:
+```shell
+task package
+```
+The package will contain executable and builtin plugins.
+
+> [!IMPORTANT]
+> Task build on windows relies on coreutils (`cygwin`) installed
+
+### Without Taskfile
+
+Project has scripts in according directory. There's `package.ps1` script.
