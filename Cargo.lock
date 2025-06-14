@@ -455,6 +455,7 @@ checksum = "cea70ddb795996207ad57735b50c5982d8844f38ba9ee5f1aedcfb708a2aa11e"
 dependencies = [
  "equivalent",
  "hashbrown",
+ "serde",
 ]
 
 [[package]]
@@ -769,6 +770,7 @@ name = "rustdeck"
 version = "0.1.0"
 dependencies = [
  "axum",
+ "indexmap",
  "libloading",
  "parking_lot",
  "regex",

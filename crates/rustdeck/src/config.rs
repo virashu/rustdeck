@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 
 use crate::buttons::{DeckButton, DeckButtonPos, DeckButtonStyle};
@@ -17,7 +18,7 @@ impl Default for DeckDimensionConfig {
 }
 
 pub type DeckButtonScreen = HashMap<(u32, u32), DeckButton>;
-pub type DeckScreens = HashMap<String, DeckButtonScreen>;
+pub type DeckScreens = IndexMap<String, DeckButtonScreen>;
 
 #[derive(Deserialize, Serialize)]
 struct SerializedDeckButton {
@@ -125,7 +126,7 @@ impl Default for DeckConfig {
     fn default() -> Self {
         Self {
             deck: DeckDimensionConfig::default(),
-            screens: HashMap::from([("default".into(), HashMap::default())]),
+            screens: IndexMap::from([("default".into(), HashMap::default())]),
         }
     }
 }
