@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use serde::{Deserialize, Serialize};
 
 use crate::plugins::PluginStore;
@@ -76,6 +78,32 @@ pub struct RenderedDeckButton {
     pub on_click_action: Option<String>,
 }
 
+pub struct VariableRenderer<'a> {
+    cache: HashMap<String, String>,
+    plugin_store: &'a PluginStore,
+}
+
+impl<'a> VariableRenderer<'a> {
+    pub fn new(plugin_store: &'a PluginStore) -> Self {
+        Self {
+            cache: HashMap::new(),
+            plugin_store,
+        }
+    }
+
+    pub fn get(&mut self, id: &str) -> String {
+        let var_opt = self.cache.get(id);
+
+        if let Some(var) = var_opt {
+            return var.clone();
+        }
+
+        let var = self.plugin_store.render_variable(id);
+        self.cache.insert(id.to_string(), var.clone());
+        var
+    }
+}
+
 #[derive(Clone, Debug, Default, Serialize)]
 pub struct DeckButton {
     pub style: DeckButtonStyle,
@@ -85,14 +113,18 @@ pub struct DeckButton {
 }
 
 impl DeckButton {
-    fn render_content(&self, plugins: &PluginStore) -> String {
+    fn render_content(&self, vars: &mut VariableRenderer) -> String {
+        if !self.template.contains('{') {
+            return self.template.clone();
+        }
+
         let input = &self.template;
 
         let a: Vec<(String, String)> = BUTTON_VAR_REGEX
             .captures_iter(input)
             .map(|m| {
                 let ident = &m["v"];
-                let value = plugins.render_variable(ident);
+                let value = vars.get(ident);
                 (ident.to_owned(), value)
             })
             .collect();
@@ -106,12 +138,12 @@ impl DeckButton {
         output
     }
 
-    pub fn render(&self, pos: (u32, u32), plugins: &PluginStore) -> RenderedDeckButton {
+    pub fn render(&self, pos: (u32, u32), vars: &mut VariableRenderer) -> RenderedDeckButton {
         RenderedDeckButton {
             position: DeckButtonPos::from_yx(pos),
             style: self.style.clone(),
             icon: self.icon.clone(),
-            content: self.render_content(plugins),
+            content: self.render_content(vars),
             on_click_action: self.on_click_action.clone(),
         }
     }
@@ -121,4 +153,5 @@ impl DeckButton {
 pub struct DeckButtonUpdate {
     pub template: String,
     pub on_click_action: Option<String>,
+    pub icon: Option<String>,
 }
