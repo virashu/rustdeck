@@ -3,7 +3,7 @@ New-Item -ItemType Directory -Path .\dist\pack         -Force > $null
 New-Item -ItemType Directory -Path .\dist\pack\plugins -Force > $null
 
 cargo build --package rustdeck-media --release
-cargo build --package rustdeck       --release
+cargo build --package rustdeck       --release --features portable
 
 Copy-Item .\target\release\rustdeck.exe       .\dist\pack\rustdeck.exe                      -Force
 Copy-Item .\target\release\rustdeck_media.dll .\dist\pack\plugins\rustdeck_media.deckplugin -Force

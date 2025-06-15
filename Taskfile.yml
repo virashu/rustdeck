@@ -5,7 +5,7 @@ version: "3"
 tasks:
   plugins_dir:
     cmd: mkdir -p ./plugins/
-    generates: 
+    generates:
       - ./plugins/
     status:
       - test -d directory
@@ -36,22 +36,22 @@ tasks:
   package:
     cmds:
       - mkdir -p ./dist/pack/plugins
-      
+
       - cargo build --package rustdeck-media --release
-      - cargo build --package rustdeck       --release
-      
+      - cargo build --package rustdeck       --release --features portable
+
       - cmd: cp ./target/release/rustdeck ./dist/pack/rustdeck
         platforms: [linux]
       - cmd: cp ./target/release/rustdeck.exe ./dist/pack/rustdeck.exe
         platforms: [windows]
-      
+
       - cmd: cp ./target/release/librustdeck_media.so ./dist/pack/plugins/rustdeck_media.deckplugin
         platforms: [linux]
       - cmd: cp ./target/release/rustdeck_media.dll ./dist/pack/plugins/rustdeck_media.deckplugin
         platforms: [windows]
 
       - 7z a -tzip -r ./dist/rustdeck.zip -w ./dist/pack/*
-  
+
   run_test:
     deps:
       - build_example_plugin
@@ -64,11 +64,10 @@ tasks:
       - cp ./tests/test_resources/config.json ./config.json
 
       - cargo run --package rustdeck
-  
+
   clean:
     cmds:
       - rm -rf ./dist
       - rm -rf ./icons
       - rm -rf ./plugins
       - rm -f  ./config.json
-

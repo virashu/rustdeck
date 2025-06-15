@@ -5,8 +5,9 @@ use std::sync::Arc;
 use std::time::Instant;
 
 use crate::buttons::{DeckButton, DeckButtonUpdate, RenderedDeckButton, VariableRenderer};
+use crate::config::paths::PLUGINS;
 use crate::config::{DeckButtonScreen, DeckConfig, DeckDimensionConfig};
-use crate::constants::{DECK_ACTION_ID, DECK_ACTION_NAME, DECK_ACTION_PREFIX, PLUGIN_DIR};
+use crate::constants::{DECK_ACTION_ID, DECK_ACTION_NAME, DECK_ACTION_PREFIX};
 use crate::models::PluginActionsData;
 use crate::plugins::PluginStore;
 
@@ -40,7 +41,7 @@ impl Deck {
         config: DeckConfig,
         config_callback: impl Fn(&DeckConfig) + Send + Sync + 'static,
     ) -> Result<Self, Box<dyn std::error::Error>> {
-        let plugin_store = PluginStore::new(PLUGIN_DIR)?;
+        let plugin_store = PluginStore::new(&*PLUGINS)?;
 
         Ok(Self {
             config: config.deck,

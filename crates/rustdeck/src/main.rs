@@ -10,14 +10,13 @@ mod server;
 use std::fs;
 use std::{sync::Arc, thread};
 
-use crate::config::{load_config, save_config};
-use crate::constants::{ICONS_DIR, PLUGIN_DIR};
+use crate::config::{load_config, paths, save_config};
 use crate::deck::Deck;
 use crate::server::http;
 
 fn init_dirs() {
-    fs::create_dir_all(PLUGIN_DIR).unwrap();
-    fs::create_dir_all(ICONS_DIR).unwrap();
+    fs::create_dir_all(&*paths::PLUGINS).unwrap();
+    fs::create_dir_all(&*paths::ICONS).unwrap();
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
