@@ -22,7 +22,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/DeckDimensionsConfig'
+                $ref: "#/components/schemas/DeckDimensionsConfig"
 
   /api/client/buttons:
     get:
@@ -38,7 +38,7 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/RenderedButton'
+                  $ref: "#/components/schemas/RenderedButton"
 
   /api/client/click/{y}/{x}:
     post:
@@ -57,6 +57,18 @@ paths:
           required: true
           schema:
             type: integer
+
+  /api/client/screen/{id}:
+    post:
+      tags:
+        - Client
+      summary: Switch screen
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
 
   /api/client/icon/{id}:
     get:
@@ -102,7 +114,7 @@ paths:
               schema:
                 type: array
                 items:
-                  type: string
+                  $ref: "#/components/schemas/PluginActionsData"
 
   /api/config/list/screens:
     get:
@@ -132,16 +144,21 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/RawButton'
+                $ref: "#/components/schemas/RawButton"
     patch:
       tags:
         - Config
       summary: Update raw button
       description: Update raw button template
 
+    delete:
+      tags:
+        - Config
+      summary: Delete raw button
+      description: Delete raw button template
+
 components:
   schemas:
-
     DeckDimensionsConfig:
       type: object
       properties:
@@ -168,7 +185,7 @@ components:
         icon:
           type: string?
         style:
-          $ref: '#/components/schemas/ButtonStyle'
+          $ref: "#/components/schemas/ButtonStyle"
         on_click_action:
           type: string?
         position:
@@ -190,3 +207,15 @@ components:
             - center
             - left
             - right
+
+    PluginActionsData:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        actions:
+          type: array
+          items:
+            type: string
