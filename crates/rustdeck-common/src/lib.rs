@@ -1,67 +1,252 @@
 use std::ffi::{c_char, c_void};
 
-pub mod interface {
-    pub const NAME_IDENT: &[u8] = b"get_name";
-    pub const DESCRIPTION_IDENT: &[u8] = b"get_description";
-    pub const ID_IDENT: &[u8] = b"get_id";
-    pub const PLUGIN_IDENT: &[u8] = b"PLUGIN";
+pub mod prelude {
+    pub use super::{Action, ActionArg, Plugin, Variable};
+}
 
-    pub const ACTIONS: &[u8] = b"get_actions";
-    pub const VARIABLES: &[u8] = b"get_variables";
+pub enum Type {
+    Bool,
+    Int,
+    Float,
+    String,
+}
+
+impl From<Type> for i32 {
+    fn from(val: Type) -> Self {
+        match val {
+            Type::Bool => 0,
+            Type::Int => 1,
+            Type::Float => 2,
+            Type::String => 3,
+        }
+    }
+}
+
+impl TryFrom<i32> for Type {
+    type Error = ();
+
+    fn try_from(value: i32) -> Result<Self, Self::Error> {
+        Ok(match value {
+            0 => Self::Bool,
+            1 => Self::Int,
+            2 => Self::Float,
+            3 => Self::String,
+            _ => panic!("Invalid type value"),
+        })
+    }
+}
+
+impl TryFrom<&str> for Type {
+    type Error = ();
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        Ok(match value.to_lowercase().as_str() {
+            "bool" => Self::Bool,
+            "int" => Self::Int,
+            "float" => Self::Float,
+            "string" => Self::String,
+            _ => panic!("Invalid type value"),
+        })
+    }
 }
 
 #[repr(C)]
-pub struct CPlugin {
-    pub init: unsafe extern "C" fn() -> *mut c_void,
+pub struct ActionArg {
+    pub id: *const c_char,
+    pub desc: *const c_char,
+    pub r#type: i32,
+}
 
-    pub update: unsafe extern "C" fn(state: *mut c_void),
+#[repr(C)]
+pub struct Action {
+    pub id: *const c_char,
+    pub name: *const c_char,
+    pub desc: *const c_char,
+    pub args: *const *const ActionArg,
+}
 
-    pub run_action: unsafe extern "C" fn(state: *mut c_void, id: *const c_char),
-    pub get_variable: unsafe extern "C" fn(state: *mut c_void, id: *const c_char) -> *mut c_char,
+#[repr(C)]
+pub struct Variable {
+    pub id: *const c_char,
+    pub desc: *const c_char,
+    pub r#type: i32,
+}
+
+#[repr(C)]
+pub struct Plugin {
+    pub id: *const c_char,
+    pub name: *const c_char,
+    pub desc: *const c_char,
+
+    pub variables: *const *const Variable,
+    pub actions: *const *const Action,
+
+    pub fn_init: unsafe extern "C" fn() -> *mut c_void,
+    pub fn_update: unsafe extern "C" fn(state: *mut c_void),
+    pub fn_get_variable: unsafe extern "C" fn(state: *mut c_void, id: *const c_char) -> *mut c_char,
+    pub fn_run_action: unsafe extern "C" fn(state: *mut c_void, id: *const c_char),
+}
+
+pub type BuildFn = unsafe extern "C" fn() -> *const Plugin;
+
+pub mod util {
+    use std::{
+        ffi::{CStr, CString, c_char},
+        mem::ManuallyDrop,
+    };
+
+    pub unsafe fn ptr_to_str<'a>(ptr: *const c_char) -> &'a str {
+        unsafe { CStr::from_ptr(ptr).to_str().unwrap() }
+    }
+
+    pub unsafe fn str_to_ptr(s: impl AsRef<str>) -> *const c_char {
+        let p = ManuallyDrop::new(CString::new(s.as_ref()));
+        p.as_ref().unwrap().as_ptr()
+    }
 }
 
 #[macro_export]
-macro_rules! define_plugin {
+macro_rules! decl_plugin {
+    /* With actions and variables */
     (
-        name: $name:literal,
-        description: $description:literal,
         id: $id:literal,
-        actions: $actions:expr,
+        name: $name:literal,
+        desc: $desc:literal,
         variables: $variables:expr,
-        data: $data:expr
+        actions: $actions:expr,
+
+        fn_init: $user_fn_init:expr,
+        fn_update: $user_fn_update:expr,
+        fn_get_variable: $user_fn_get_variable:expr,
+        fn_run_action: $user_fn_run_action:expr
+
+        $(,)?
     ) => {
-        const __NAME: &str = concat!($name, "\0");
-        const __DESCRIPTION: &str = concat!($description, "\0");
-        const __ID: &str = concat!($id, "\0");
-        const __ACTIONS: &str = concat!($actions, "\0");
-        const __VARIABLES: &str = concat!($variables, "\0");
+        unsafe {
+            unsafe extern "C" fn fn_init() -> *mut ::std::ffi::c_void {
+                let mut user_state = ($user_fn_init)();
+                let mut state = ::std::mem::ManuallyDrop::new(Box::new(user_state));
+                (&raw mut (**state)).cast()
+            }
+            unsafe extern "C" fn fn_update(state: *mut ::std::ffi::c_void) {
+                let user_state = unsafe { &mut *state.cast() };
+                ($user_fn_update)(user_state);
+            }
+            unsafe extern "C" fn fn_get_variable(
+                state: *mut ::std::ffi::c_void,
+                id: *const ::std::ffi::c_char,
+            ) -> *mut ::std::ffi::c_char {
+                let user_state = unsafe { &mut *state.cast() };
+                let id = unsafe { ::std::ffi::CStr::from_ptr(id).to_str().unwrap() };
+                let res = ($user_fn_get_variable)(user_state, id);
 
-        #[unsafe(no_mangle)]
-        pub extern "C" fn get_name() -> *const ::std::ffi::c_char {
-            __NAME.as_ptr() as _
+                return (*::std::mem::ManuallyDrop::new(::std::boxed::Box::new(
+                    ::std::ffi::CString::new(res).unwrap(),
+                )))
+                .as_ptr()
+                .cast_mut()
+            }
+            unsafe extern "C" fn fn_run_action(
+                state: *mut ::std::ffi::c_void,
+                id: *const ::std::ffi::c_char,
+            ) {
+                let user_state = unsafe { &mut *state.cast() };
+                let id = unsafe { ::std::ffi::CStr::from_ptr(id).to_str().unwrap() };
+                ($user_fn_run_action)(user_state, id);
+            }
+
+            ::std::boxed::Box::into_raw(::std::boxed::Box::new($crate::Plugin {
+                id: $crate::util::str_to_ptr($id),
+                name: $crate::util::str_to_ptr($name),
+                desc: $crate::util::str_to_ptr($desc),
+                variables: $variables,
+                actions: $actions,
+
+                fn_init: fn_init,
+                fn_update: fn_update,
+                fn_get_variable: fn_get_variable,
+                fn_run_action: fn_run_action,
+            })) as *const $crate::Plugin
         }
+    };
+}
 
-        #[unsafe(no_mangle)]
-        pub extern "C" fn get_description() -> *const ::std::ffi::c_char {
-            __DESCRIPTION.as_ptr() as _
+#[macro_export]
+macro_rules! variables {
+    (
+        $($var:expr),+ $(,)?
+    ) => {
+        unsafe {
+            ::std::mem::ManuallyDrop::new(vec![
+                $($var,)+
+                ::std::ptr::null()
+            ]).as_ptr() as *const *const $crate::Variable
         }
+    };
+}
 
-        #[unsafe(no_mangle)]
-        pub extern "C" fn get_id() -> *const ::std::ffi::c_char {
-            __ID.as_ptr() as _
+#[macro_export]
+macro_rules! decl_variable {
+    (
+        id: $id:literal,
+        desc: $desc:literal,
+        vtype: $vtype:literal
+        $(,)?
+    ) => {
+        unsafe {
+            ::std::boxed::Box::into_raw(::std::boxed::Box::new($crate::Variable {
+                id: $crate::util::str_to_ptr($id),
+                desc: $crate::util::str_to_ptr($desc),
+                r#type: $crate::Type::try_from($vtype)
+                    .expect("Incorrect variable type")
+                    .into(),
+            })) as *const $crate::Variable
         }
+    };
+}
 
-        #[unsafe(no_mangle)]
-        pub extern "C" fn get_actions() -> *const ::std::ffi::c_char {
-            __ACTIONS.as_ptr() as _
+#[macro_export]
+macro_rules! actions {
+    (
+        $($act:expr),+ $(,)?
+    ) => {
+        unsafe {
+            ::std::mem::ManuallyDrop::new(vec![
+                $($act,)+
+                ::std::ptr::null()
+            ]).as_ptr() as *const *const $crate::Action
         }
+    };
+}
 
-        #[unsafe(no_mangle)]
-        pub extern "C" fn get_variables() -> *const ::std::ffi::c_char {
-            __VARIABLES.as_ptr() as _
+#[macro_export]
+macro_rules! decl_action {
+    (
+        id: $id:literal,
+        name: $name:literal,
+        desc: $desc:literal,
+        args: $args:expr
+        $(,)?
+    ) => {
+        ::std::boxed::Box::into_raw(::std::boxed::Box::new($crate::Action {
+            id: $crate::util::str_to_ptr($id),
+            name: $crate::util::str_to_ptr($name),
+            desc: $crate::util::str_to_ptr($desc),
+            args: $args,
+        })) as *const $crate::Action
+    };
+
+    (
+        id: $id:literal,
+        name: $name:literal,
+        desc: $desc:literal
+        $(,)?
+    ) => {
+        decl_action! {
+            id: $id,
+            name: $name,
+            desc: $desc,
+            args: ::std::ptr::null(),
         }
-
-        #[unsafe(no_mangle)]
-        static PLUGIN: $crate::CPlugin = $data;
     };
 }

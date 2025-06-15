@@ -1,27 +1,13 @@
-use libloading::{Library, Symbol};
-use rustdeck_common::{CPlugin, interface};
+use libloading::Library;
 
 use std::ffi::{CStr, CString, OsStr, c_char, c_void};
 use std::fmt::Debug;
 
+use rustdeck_common::{BuildFn, Plugin as FFIPlugin, util};
+
 use crate::constants::DECK_ACTION_ID;
 
 use super::error::PluginLoadError;
-
-unsafe fn get_str<'a>(library: &'a Library, ident: &[u8]) -> Result<&'a str, PluginLoadError> {
-    // First, the string exported by the plugin is read. For FFI-safety and
-    // thread-safety, this must be a function that returns `*const c_char`.
-    let name_fn = unsafe { library.get::<extern "C" fn() -> *const c_char>(ident) }?;
-    let name: *const c_char = name_fn();
-
-    // Unfortunately there is no way to make sure this part is safe. We have
-    // to assume the address exported by the plugin is valid. Otherwise,
-    // this part may cause an abort.
-    let name = unsafe { CStr::from_ptr(name) };
-
-    // Finally, the string is converted to UTF-8 and returned
-    Ok(name.to_str()?)
-}
 
 unsafe fn read_drop_pointer(ptr: *mut c_char) -> String {
     if ptr.is_null() {
@@ -37,16 +23,30 @@ unsafe fn read_drop_pointer(ptr: *mut c_char) -> String {
     string
 }
 
+#[derive(Clone)]
+pub struct Action {
+    pub id: String,
+    pub name: String,
+    pub description: String,
+}
+
+#[derive(Clone)]
+pub struct Variable {
+    pub id: String,
+    pub description: String,
+    pub r#type: i32,
+}
+
 pub struct Plugin {
     #[allow(dead_code, reason = "WIP")]
     pub name: String,
     #[allow(dead_code, reason = "WIP")]
     pub description: String,
     pub id: String,
-    pub actions: Vec<String>,
-    pub variables: Vec<String>,
+    pub actions: Vec<Action>,
+    pub variables: Vec<Variable>,
 
-    inner: CPlugin,
+    inner: &'static FFIPlugin,
     state: *mut c_void,
 
     #[allow(dead_code, reason = "plugin depends on library")]
@@ -60,37 +60,75 @@ impl Plugin {
     {
         unsafe {
             let lib = Library::new(path)?;
+            let build: libloading::Symbol<BuildFn> = lib.get(b"build").unwrap();
+            let plugin_raw = build();
+            let plugin = plugin_raw.as_ref().unwrap();
 
-            let id = get_str(&lib, interface::ID_IDENT)?
-                .to_owned()
-                .to_lowercase();
+            let id = util::ptr_to_str(plugin.id).to_owned();
+
             if id == DECK_ACTION_ID {
                 return Err(PluginLoadError::FormatError(
                     "Plugin id can not be 'deck', as it is reserved".into(),
                 ));
             }
 
-            let name = get_str(&lib, interface::NAME_IDENT)?.to_owned();
-            let description = get_str(&lib, interface::DESCRIPTION_IDENT)?.to_owned();
-            let actions = get_str(&lib, interface::ACTIONS)?
-                .split(',')
-                .map(str::trim)
-                .filter(|s| !s.is_empty())
-                .map(ToString::to_string)
-                .collect();
-            let variables = get_str(&lib, interface::VARIABLES)?
-                .split(',')
-                .map(str::trim)
-                .filter(|s| !s.is_empty())
-                .map(ToString::to_string)
-                .collect();
+            let name = util::ptr_to_str(plugin.name).to_owned();
+            let description = util::ptr_to_str(plugin.desc).to_owned();
 
-            let plugin_data = lib
-                .get::<Symbol<*const CPlugin>>(interface::PLUGIN_IDENT)
-                .unwrap()
-                .read();
+            let mut variables = Vec::new();
+            if !plugin.variables.is_null() {
+                let mut vars_offset = 0;
+                while let Some(var) = plugin
+                    .variables
+                    .offset(vars_offset)
+                    .as_ref()
+                    .unwrap()
+                    .as_ref()
+                {
+                    variables.push(Variable {
+                        id: util::ptr_to_str(var.id).to_owned(),
+                        description: util::ptr_to_str(var.desc).to_owned(),
+                        r#type: var.r#type,
+                    });
+                    vars_offset += 1;
+                }
+            }
 
-            let state = (plugin_data.init)();
+            let mut actions = Vec::new();
+            if !plugin.actions.is_null() {
+                let mut actions_offset = 0;
+                while let Some(act) = plugin
+                    .actions
+                    .offset(actions_offset)
+                    .as_ref()
+                    .unwrap()
+                    .as_ref()
+                {
+                    actions.push(Action {
+                        id: util::ptr_to_str(act.id).to_owned(),
+                        name: util::ptr_to_str(act.name).to_owned(),
+                        description: util::ptr_to_str(act.desc).to_owned(),
+                    });
+
+                    // if act.args.is_null() {
+                    //     //
+                    // } else {
+                    //     //
+                    //     let mut args_offset = 0;
+                    //     while let Some(arg) =
+                    //         act.args.offset(args_offset).as_ref().unwrap().as_ref()
+                    //     {
+                    //         // util::ptr_to_str(arg.id)
+                    //         // util::ptr_to_str(arg.desc)
+                    //         args_offset += 1;
+                    //     }
+                    // }
+
+                    actions_offset += 1;
+                }
+            }
+
+            let state = (plugin.fn_init)();
 
             Ok(Self {
                 name,
@@ -98,7 +136,7 @@ impl Plugin {
                 id,
                 actions,
                 variables,
-                inner: plugin_data,
+                inner: plugin,
                 state,
                 lib,
             })
@@ -106,12 +144,12 @@ impl Plugin {
     }
 
     pub fn update(&mut self) {
-        unsafe { (self.inner.update)(self.state) }
+        unsafe { (self.inner.fn_update)(self.state) }
     }
 
     pub fn run_action(&self, id: String) {
         unsafe {
-            (self.inner.run_action)(
+            (self.inner.fn_run_action)(
                 self.state,
                 CString::new(id).unwrap().as_ptr().cast::<c_char>(),
             );
@@ -123,7 +161,7 @@ impl Plugin {
         T: AsRef<str>,
     {
         unsafe {
-            let p = (self.inner.get_variable)(
+            let p = (self.inner.fn_get_variable)(
                 self.state,
                 CString::new(id.as_ref()).unwrap().as_ptr().cast::<c_char>(),
             );

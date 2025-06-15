@@ -16,7 +16,7 @@ use crate::{
     buttons::{DeckButton, DeckButtonUpdate},
     config::DeckDimensionConfig,
     deck::{Deck, DeckScreen},
-    models::PluginActionsData,
+    models::{PluginActionsGroupedData, PluginActionsUngroupedData, PluginVariablesUngroupedData},
 };
 
 #[derive(Clone)]
@@ -85,15 +85,15 @@ async fn delete_button(State(state): State<AxumState>, Path(pos): Path<(u32, u32
     }
 }
 
-async fn list_variables(State(state): State<AxumState>) -> Json<HashMap<String, String>> {
+async fn list_variables(State(state): State<AxumState>) -> Json<Vec<PluginVariablesUngroupedData>> {
     Json(state.deck.get_all_variables())
 }
 
-async fn list_actions_ids(State(state): State<AxumState>) -> Json<Vec<String>> {
+async fn list_actions_ids(State(state): State<AxumState>) -> Json<Vec<PluginActionsUngroupedData>> {
     Json(state.deck.get_all_actions_names())
 }
 
-async fn list_actions(State(state): State<AxumState>) -> Json<Vec<PluginActionsData>> {
+async fn list_actions(State(state): State<AxumState>) -> Json<Vec<PluginActionsGroupedData>> {
     Json(state.deck.get_all_actions())
 }
 

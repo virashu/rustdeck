@@ -8,7 +8,9 @@ use crate::buttons::{DeckButton, DeckButtonUpdate, RenderedDeckButton, VariableR
 use crate::config::paths::PLUGINS;
 use crate::config::{DeckButtonScreen, DeckConfig, DeckDimensionConfig};
 use crate::constants::{DECK_ACTION_ID, DECK_ACTION_NAME, DECK_ACTION_PREFIX};
-use crate::models::PluginActionsData;
+use crate::models::{
+    PluginActionsGroupedData, PluginActionsUngroupedData, PluginVariablesUngroupedData,
+};
 use crate::plugins::PluginStore;
 
 mod config {
@@ -33,7 +35,7 @@ pub struct Deck {
     icons: HashMap<String, String>,
     #[allow(clippy::struct_field_names)]
     /// Actions of the deck itself
-    deck_actions: PluginActionsData,
+    deck_actions: PluginActionsGroupedData,
 }
 
 impl Deck {
@@ -54,10 +56,14 @@ impl Deck {
                 .collect(),
             plugin_store,
             icons: HashMap::from([("test_icon".into(), "icons/test_icon.png".into())]),
-            deck_actions: PluginActionsData {
+            deck_actions: PluginActionsGroupedData {
                 id: String::from(DECK_ACTION_ID),
                 name: String::from(DECK_ACTION_NAME),
-                actions: vec![String::from("switch_screen")],
+                actions: vec![PluginActionsUngroupedData {
+                    id: String::from("switch_screen"),
+                    name: String::from("Switch screen"),
+                    description: String::new(),
+                }],
             },
         })
     }
@@ -159,17 +165,21 @@ impl Deck {
     }
 
     /// Get names and values of all available variables
-    pub fn get_all_variables(&self) -> HashMap<String, String> {
+    pub fn get_all_variables(&self) -> Vec<PluginVariablesUngroupedData> {
         self.plugin_store.get_all_variables()
     }
 
     /// Get names of all available actions
-    pub fn get_all_actions_names(&self) -> Vec<String> {
+    pub fn get_all_actions_names(&self) -> Vec<PluginActionsUngroupedData> {
         [
             self.deck_actions
                 .actions
-                .iter()
-                .map(|a| format!("{DECK_ACTION_PREFIX}{a}"))
+                .clone()
+                .into_iter()
+                .map(|a| PluginActionsUngroupedData {
+                    id: format!("{DECK_ACTION_PREFIX}{}", a.id),
+                    ..a
+                })
                 .collect(),
             self.plugin_store.get_all_actions_names(),
         ]
@@ -177,7 +187,7 @@ impl Deck {
     }
 
     /// Get all actions with plugin id and name info
-    pub fn get_all_actions(&self) -> Vec<PluginActionsData> {
+    pub fn get_all_actions(&self) -> Vec<PluginActionsGroupedData> {
         let mut actions = self.plugin_store.get_all_actions();
         actions.insert(0, self.deck_actions.clone());
         actions

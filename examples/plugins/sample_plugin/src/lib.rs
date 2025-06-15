@@ -1,43 +1,16 @@
-use std::{
-    ffi::{c_char, c_void, CStr, CString},
-    mem::ManuallyDrop,
-    ptr::null_mut,
-};
-
-use rustdeck_common::{define_plugin, CPlugin};
-
-define_plugin! {
-    name: "Sample Plugin",
-    description: "A sample plugin.",
-    id: "plugin_test",
-    actions: "increment, clear",
-    variables: "counter",
-    data: CPlugin {
-        init,
-        run_action,
-        get_variable,
-        update
-    }
-}
+use rustdeck_common::{Plugin, actions, decl_action, decl_plugin, decl_variable, variables};
 
 struct PluginState {
     counter: i32,
 }
 
-unsafe extern "C" fn init() -> *mut c_void {
-    let mut state = ManuallyDrop::new(Box::new(PluginState { counter: 0 }));
-
-    (&raw mut (**state)).cast()
+const fn init() -> PluginState {
+    PluginState { counter: 0 }
 }
 
-unsafe extern "C" fn update(state: *mut c_void) {
-    let _state = unsafe { &mut *state.cast::<PluginState>() };
-}
+const fn update(_: &PluginState) {}
 
-unsafe extern "C" fn run_action(state: *mut c_void, id: *const c_char) {
-    let state = unsafe { &mut *state.cast::<PluginState>() };
-    let id = unsafe { CStr::from_ptr(id).to_str().unwrap() };
-
+fn run_action(state: &mut PluginState, id: &str) {
     match id {
         "increment" => {
             state.counter += 1;
@@ -49,16 +22,43 @@ unsafe extern "C" fn run_action(state: *mut c_void, id: *const c_char) {
     }
 }
 
-unsafe extern "C" fn get_variable(state: *mut c_void, id: *const c_char) -> *mut c_char {
-    let state = unsafe { &mut *state.cast::<PluginState>() };
-    let id = unsafe { CStr::from_ptr(id).to_str().unwrap() };
-
+fn get_variable(state: &PluginState, id: &str) -> String {
     if id == "counter" {
-        let counter_value =
-            ManuallyDrop::new(Box::new(CString::new(state.counter.to_string()).unwrap()));
-
-        return (*counter_value).as_ptr().cast_mut();
+        state.counter.to_string()
+    } else {
+        String::new()
     }
+}
 
-    null_mut()
+#[unsafe(no_mangle)]
+unsafe extern "C" fn build() -> *const Plugin {
+    decl_plugin! {
+        id: "plugin_test",
+        name: "Sample Plugin",
+        desc: "A sample plugin",
+        variables: variables!(
+            decl_variable! {
+                id: "counter",
+                desc: "Counter",
+                vtype: "string",
+            },
+        ),
+        actions: actions!(
+            decl_action! {
+                id: "increment",
+                name: "Increment",
+                desc: "Increment counter"
+            },
+            decl_action! {
+                id: "clear",
+                name: "Clear",
+                desc: "Set counter value to 0"
+            },
+        ),
+
+        fn_init: init,
+        fn_update: update,
+        fn_get_variable: get_variable,
+        fn_run_action: run_action,
+    }
 }

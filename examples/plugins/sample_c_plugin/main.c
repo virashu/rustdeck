@@ -1,31 +1,66 @@
+#include <assert.h>
+#include <stdio.h>
+#include <stdlib.h>
+
 #include "common.h"
 
-// Plugin info
-pName("CLang Plugin")
-pDesc("CLang Plugin")
-pId("clang_plugin")
-pActions("hello")
-pVars("")
+#ifdef _WIN32
+#define EXPORT __declspec(dllexport) __stdcall
+#endif // _WIN32
 
-// Make exports
-pExport
-
-// Define our methods
-void *init() {
-  return 0;
+void*
+init()
+{
+  return NULL;
 }
 
-void update(void *state) {
+void
+update(void* state)
+{
   return;
 }
 
-void run_action(void *state, char *id) {
+char*
+get_variable(void* state, char* id)
+{
+  return NULL;
+}
+
+void
+run_action(void* state, char* id)
+{
   return;
 }
 
-char* get_variable(void *state, char *id) {
-  return 0;
-}
+const Plugin somePlugin = {
+  .id = "some_plugin",
+  .name = "Some Plugin",
+  .desc = "Just some random plugin",
+  .variables =
+    (const Variable*[]){
+      &(Variable){ .id = "a", .desc = "A Variable", .type = Integer },
+      &(Variable){ .id = "b", .desc = "B Variable", .type = Floating },
+      NULL },
+  .actions =
+    (const Action*[]){
+      &(Action){ .id = "play",
+                 .name = "Play",
+                 .desc = "Start the media playback",
+                 .args = (const ActionArg*[]){ &(ActionArg){
+                                                 .id = "file",
+                                                 .desc = "A media file to play",
+                                                 .type = String },
+                                               NULL } },
+      NULL },
+  .fn_init = &init,
+  .fn_update = &update,
+  .fn_get_variable = &get_variable,
+  .fn_run_action = &run_action,
+};
 
-// Export struct
-pData {init, update, run_action, get_variable};
+EXPORT
+const void*
+build()
+{
+  return &somePlugin;
+}
