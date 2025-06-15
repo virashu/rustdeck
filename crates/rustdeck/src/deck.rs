@@ -4,7 +4,7 @@ use std::time::Instant;
 
 use crate::buttons::{DeckButton, DeckButtonUpdate, RenderedDeckButton, VariableRenderer};
 use crate::config::{DeckButtonScreen, DeckConfig, DeckDimensionConfig};
-use crate::constants::{DECK_ACTION_ID, DECK_ACTION_PREFIX, PLUGIN_DIR};
+use crate::constants::{DECK_ACTION_ID, DECK_ACTION_NAME, DECK_ACTION_PREFIX, PLUGIN_DIR};
 use crate::models::PluginActionsData;
 use crate::plugins::PluginStore;
 
@@ -29,7 +29,7 @@ pub struct Deck {
     icons: HashMap<String, String>,
     #[allow(clippy::struct_field_names)]
     /// Actions of the deck itself
-    deck_actions: Vec<String>,
+    deck_actions: PluginActionsData,
 }
 
 impl Deck {
@@ -38,15 +38,19 @@ impl Deck {
 
         Ok(Self {
             config: config.deck,
-            current_screen_id: String::from("default").into(),
+            current_screen_id: RwLock::new(String::from("default")),
             screens: config
                 .screens
                 .into_iter()
-                .map(|s| (s.0, s.1.into()))
+                .map(|s| (s.0, RwLock::new(s.1)))
                 .collect(),
             plugin_store,
             icons: HashMap::from([("test_icon".into(), "icons/test_icon.png".into())]),
-            deck_actions: vec![String::from("switch_screen")],
+            deck_actions: PluginActionsData {
+                id: String::from(DECK_ACTION_ID),
+                name: String::from(DECK_ACTION_NAME),
+                actions: vec![String::from("switch_screen")],
+            },
         })
     }
 
@@ -155,8 +159,9 @@ impl Deck {
     pub fn get_all_actions_names(&self) -> Vec<String> {
         [
             self.deck_actions
+                .actions
                 .iter()
-                .map(|a| format!("deck.{a}"))
+                .map(|a| format!("{DECK_ACTION_PREFIX}{a}"))
                 .collect(),
             self.plugin_store.get_all_actions_names(),
         ]
@@ -166,11 +171,7 @@ impl Deck {
     /// Get all actions with plugin id and name info
     pub fn get_all_actions(&self) -> Vec<PluginActionsData> {
         let mut actions = self.plugin_store.get_all_actions();
-        actions.insert(0, PluginActionsData {
-            id: DECK_ACTION_ID.to_owned(),
-            name: "Deck".into(),
-            actions: self.deck_actions.clone(),
-        });
+        actions.insert(0, self.deck_actions.clone());
         actions
     }
 
