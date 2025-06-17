@@ -56,7 +56,7 @@
             "text_size": 24
           },
           "template": "State: {rustdeck_media.state}\\nTitle: '{rustdeck_media.title}'\\nArtist: '{rustdeck_media.artist}'",
-          "on_click_action": "rustdeck_media.play_pause",
+          "on_click_action": null,
           "icon": null
         },
         {

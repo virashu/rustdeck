@@ -1,5 +1,5 @@
 use futures::executor::block_on;
-use media_session::{MediaSession, traits::MediaSessionControls};
+use media_session::{MediaInfo, MediaSession, traits::MediaSessionControls};
 use rustdeck_common::{Plugin, actions, decl_action, decl_plugin, decl_variable, variables};
 
 use std::panic::catch_unwind;
@@ -28,8 +28,17 @@ fn run_action(state: &PluginState, id: &str) {
     }
 }
 
+fn get_info() -> Option<MediaInfo> {
+    let session_future = catch_unwind(async || MediaSession::new().await);
+    if session_future.is_err() {
+        return None;
+    }
+    let session = block_on(session_future.unwrap());
+    Some(session.get_info())
+}
+
 fn get_variable(_: &PluginState, id: &str) -> String {
-    let Ok(media_info) = catch_unwind(|| block_on(MediaSession::new()).get_info()) else {
+    let Some(media_info) = get_info() else {
         return String::new();
     };
 

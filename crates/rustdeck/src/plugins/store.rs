@@ -4,7 +4,8 @@ use std::path::Path;
 use std::sync::RwLock;
 
 use crate::models::{
-    PluginActionsGroupedData, PluginActionsUngroupedData, PluginVariablesUngroupedData,
+    PluginActionsGroupedData, PluginActionsUngroupedData, PluginVariablesGroupedData,
+    PluginVariablesUngroupedData,
 };
 
 use super::{Plugin, load_plugins_at};
@@ -90,7 +91,7 @@ impl PluginStore {
         Ok(())
     }
 
-    pub fn get_all_variables(&self) -> Vec<PluginVariablesUngroupedData> {
+    pub fn get_all_variables_ungrouped(&self) -> Vec<PluginVariablesUngroupedData> {
         let mut vars = Vec::new();
 
         for (plugin_id, plugin) in &self.plugins {
@@ -109,7 +110,30 @@ impl PluginStore {
         vars
     }
 
-    pub fn get_all_actions_names(&self) -> Vec<PluginActionsUngroupedData> {
+    pub fn get_all_variables_grouped(&self) -> Vec<PluginVariablesGroupedData> {
+        let mut vars = Vec::new();
+
+        for (plugin_id, plugin) in &self.plugins {
+            let lock = plugin.read().unwrap();
+            vars.push(PluginVariablesGroupedData {
+                id: plugin_id.clone(),
+                name: lock.name.clone(),
+                variables: lock
+                    .variables
+                    .iter()
+                    .cloned()
+                    .map(|var| PluginVariablesUngroupedData {
+                        id: format!("{plugin_id}.{}", var.id),
+                        description: var.description,
+                    })
+                    .collect(),
+            })
+        }
+
+        vars
+    }
+
+    pub fn get_all_actions_ungrouped(&self) -> Vec<PluginActionsUngroupedData> {
         let mut acts = Vec::new();
 
         for (plugin_id, plugin) in &self.plugins {
@@ -127,7 +151,7 @@ impl PluginStore {
         acts
     }
 
-    pub fn get_all_actions(&self) -> Vec<PluginActionsGroupedData> {
+    pub fn get_all_actions_grouped(&self) -> Vec<PluginActionsGroupedData> {
         let mut acts = Vec::new();
 
         for (plugin_id, plugin) in &self.plugins {
@@ -137,10 +161,10 @@ impl PluginStore {
                 name: lock.name.clone(),
                 actions: lock
                     .actions
-                    .clone()
-                    .into_iter()
+                    .iter()
+                    .cloned()
                     .map(|a| PluginActionsUngroupedData {
-                        id: a.id,
+                        id: format!("{plugin_id}.{}", a.id),
                         name: a.name,
                         description: a.description,
                     })

@@ -9,7 +9,8 @@ use crate::config::paths::PLUGINS;
 use crate::config::{DeckButtonScreen, DeckConfig, DeckDimensionConfig};
 use crate::constants::{DECK_ACTION_ID, DECK_ACTION_NAME, DECK_ACTION_PREFIX};
 use crate::models::{
-    PluginActionsGroupedData, PluginActionsUngroupedData, PluginVariablesUngroupedData,
+    PluginActionsGroupedData, PluginActionsUngroupedData, PluginVariablesGroupedData,
+    PluginVariablesUngroupedData,
 };
 use crate::plugins::PluginStore;
 
@@ -165,12 +166,17 @@ impl Deck {
     }
 
     /// Get names and values of all available variables
-    pub fn get_all_variables(&self) -> Vec<PluginVariablesUngroupedData> {
-        self.plugin_store.get_all_variables()
+    pub fn get_all_variables_ungrouped(&self) -> Vec<PluginVariablesUngroupedData> {
+        self.plugin_store.get_all_variables_ungrouped()
     }
 
-    /// Get names of all available actions
-    pub fn get_all_actions_names(&self) -> Vec<PluginActionsUngroupedData> {
+    /// Get names and values of all available variables grouped by plugin id
+    pub fn get_all_variables_grouped(&self) -> Vec<PluginVariablesGroupedData> {
+        self.plugin_store.get_all_variables_grouped()
+    }
+
+    /// Get ids of all available actions
+    pub fn get_all_actions_ungrouped(&self) -> Vec<PluginActionsUngroupedData> {
         [
             self.deck_actions
                 .actions
@@ -181,14 +187,14 @@ impl Deck {
                     ..a
                 })
                 .collect(),
-            self.plugin_store.get_all_actions_names(),
+            self.plugin_store.get_all_actions_ungrouped(),
         ]
         .concat()
     }
 
     /// Get all actions with plugin id and name info
-    pub fn get_all_actions(&self) -> Vec<PluginActionsGroupedData> {
-        let mut actions = self.plugin_store.get_all_actions();
+    pub fn get_all_actions_grouped(&self) -> Vec<PluginActionsGroupedData> {
+        let mut actions = self.plugin_store.get_all_actions_grouped();
         actions.insert(0, self.deck_actions.clone());
         actions
     }
