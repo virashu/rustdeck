@@ -4,7 +4,7 @@ use std::path::Path;
 use std::sync::RwLock;
 
 use crate::models::{
-    PluginActionArgsData, PluginActionsGroupedData, PluginActionsUngroupedData,
+    PluginActionArgsData, PluginActionsGroupedData, PluginActionsUngroupedData, PluginData,
     PluginVariablesGroupedData, PluginVariablesUngroupedData,
 };
 
@@ -91,117 +91,120 @@ impl PluginStore {
         Ok(())
     }
 
-    pub fn get_all_variables_ungrouped(&self) -> Vec<PluginVariablesUngroupedData> {
-        let mut vars = Vec::new();
-
-        for (plugin_id, plugin) in &self.plugins {
-            let vars_internal = plugin.read().unwrap().variables.clone();
-
-            for var in vars_internal {
-                let var_id = format!("{plugin_id}.{}", var.id);
-                // self.render_variable(var_id)
-                vars.push(PluginVariablesUngroupedData {
-                    id: var_id,
-                    description: var.description,
-                });
-            }
-        }
-
-        vars
+    /// Get variables of a plugin
+    fn get_variables_of(plugin: &Plugin) -> Vec<PluginVariablesUngroupedData> {
+        plugin
+            .variables
+            .iter()
+            .map(|var| PluginVariablesUngroupedData {
+                id: format!("{}.{}", plugin.id, var.id),
+                description: var.description.clone(),
+                r#type: var.r#type,
+            })
+            .collect()
     }
 
-    pub fn get_all_variables_grouped(&self) -> Vec<PluginVariablesGroupedData> {
-        let mut vars = Vec::new();
+    /// Get all variables of all plugins in the same vector
+    pub fn get_all_variables_ungrouped(&self) -> Vec<PluginVariablesUngroupedData> {
+        self.plugins
+            .values()
+            .flat_map(|p| Self::get_variables_of(&p.read().unwrap()))
+            .collect()
+    }
 
-        for (plugin_id, plugin) in &self.plugins {
-            let lock = plugin.read().unwrap();
-            vars.push(PluginVariablesGroupedData {
-                id: plugin_id.clone(),
-                name: lock.name.clone(),
-                variables: lock
-                    .variables
+    /// Get all varibles grouped by plugin with plugin `id` and `name`
+    ///
+    /// Does not include plugins without variables
+    pub fn get_all_variables_grouped(&self) -> Vec<PluginVariablesGroupedData> {
+        self.plugins
+            .values()
+            .filter_map(|p| {
+                let lock = p.read().unwrap();
+                let variables = Self::get_variables_of(&lock);
+                if variables.is_empty() {
+                    None
+                } else {
+                    Some(PluginVariablesGroupedData {
+                        id: lock.id.clone(),
+                        name: lock.name.clone(),
+                        variables,
+                    })
+                }
+            })
+            .collect()
+    }
+
+    /// Get actions of a plugin
+    fn get_actions_of(plugin: &Plugin) -> Vec<PluginActionsUngroupedData> {
+        plugin
+            .actions
+            .iter()
+            .map(|act| PluginActionsUngroupedData {
+                id: format!("{}.{}", plugin.id, act.id),
+                name: act.name.clone(),
+                description: act.description.clone(),
+                args: act
+                    .args
                     .iter()
                     .cloned()
-                    .map(|var| PluginVariablesUngroupedData {
-                        id: format!("{plugin_id}.{}", var.id),
-                        description: var.description,
+                    .map(|a| PluginActionArgsData {
+                        id: a.id,
+                        description: a.description,
+                        r#type: String::from(match a.r#type {
+                            0 => "bool",
+                            1 => "int",
+                            2 => "float",
+                            _ => "string",
+                        }),
                     })
                     .collect(),
             })
-        }
-
-        vars
+            .collect()
     }
 
+    /// Get all actions of all plugins in the same vector
     pub fn get_all_actions_ungrouped(&self) -> Vec<PluginActionsUngroupedData> {
-        let mut acts = Vec::new();
-
-        for (plugin_id, plugin) in &self.plugins {
-            let lock = plugin.read().unwrap();
-            for act in &lock.actions {
-                let act_id = format!("{plugin_id}.{}", act.id);
-                acts.push(PluginActionsUngroupedData {
-                    id: act_id,
-                    name: act.name.clone(),
-                    description: act.description.clone(),
-                    args: act
-                        .args
-                        .iter()
-                        .cloned()
-                        .map(|a| PluginActionArgsData {
-                            id: a.id,
-                            description: a.description,
-                            r#type: String::from(match a.r#type {
-                                0 => "bool",
-                                1 => "int",
-                                2 => "float",
-                                _ => "string",
-                            }),
-                        })
-                        .collect(),
-                });
-            }
-        }
-
-        acts
+        self.plugins
+            .values()
+            .flat_map(|p| Self::get_actions_of(&p.read().unwrap()))
+            .collect()
     }
 
+    /// Get all actions grouped by plugin with plugin `id` and `name`
+    ///
+    /// Does not include plugins without actions
     pub fn get_all_actions_grouped(&self) -> Vec<PluginActionsGroupedData> {
-        let mut acts = Vec::new();
-
-        for (plugin_id, plugin) in &self.plugins {
-            let lock = plugin.read().unwrap();
-            acts.push(PluginActionsGroupedData {
-                id: plugin_id.clone(),
-                name: lock.name.clone(),
-                actions: lock
-                    .actions
-                    .iter()
-                    .cloned()
-                    .map(|a| PluginActionsUngroupedData {
-                        id: format!("{plugin_id}.{}", a.id),
-                        name: a.name,
-                        description: a.description,
-                        args: a
-                            .args
-                            .iter()
-                            .cloned()
-                            .map(|ar| PluginActionArgsData {
-                                id: ar.id,
-                                description: ar.description,
-                                r#type: String::from(match ar.r#type {
-                                    0 => "bool",
-                                    1 => "int",
-                                    2 => "float",
-                                    _ => "string",
-                                }),
-                            })
-                            .collect(),
+        self.plugins
+            .values()
+            .filter_map(|p| {
+                let lock = p.read().unwrap();
+                let actions = Self::get_actions_of(&lock);
+                if actions.is_empty() {
+                    None
+                } else {
+                    Some(PluginActionsGroupedData {
+                        id: lock.id.clone(),
+                        name: lock.name.clone(),
+                        actions,
                     })
-                    .collect(),
-            });
-        }
+                }
+            })
+            .collect()
+    }
 
-        acts
+    pub fn get_all_plugins(&self) -> Vec<PluginData> {
+        self.plugins
+            .values()
+            .map(|p| {
+                let lock = p.read().unwrap();
+                PluginData {
+                    id: lock.id.clone(),
+                    name: lock.name.clone(),
+                    description: lock.description.clone(),
+                    variables: Self::get_variables_of(&lock),
+                    actions: Self::get_actions_of(&lock),
+                }
+            })
+            .collect()
     }
 }

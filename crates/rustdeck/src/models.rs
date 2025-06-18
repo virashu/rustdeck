@@ -35,6 +35,8 @@ pub struct PluginVariablesUngroupedData {
     pub id: String,
     /// Variable description
     pub description: String,
+    /// Variable type
+    pub r#type: i32,
 }
 
 #[derive(Serialize, Clone)]
@@ -53,6 +55,8 @@ pub struct PluginData {
     pub id: String,
     /// Plugin display name
     pub name: String,
+    /// Plugin description
+    pub description: String,
     /// Plugin variables
     pub variables: Vec<PluginVariablesUngroupedData>,
     /// Actions of plugin

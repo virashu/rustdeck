@@ -17,8 +17,8 @@ use crate::{
     config::DeckDimensionConfig,
     deck::{Deck, DeckScreen},
     models::{
-        PluginActionsGroupedData, PluginActionsUngroupedData, PluginVariablesGroupedData,
-        PluginVariablesUngroupedData,
+        PluginActionsGroupedData, PluginActionsUngroupedData, PluginData,
+        PluginVariablesGroupedData, PluginVariablesUngroupedData,
     },
 };
 
@@ -154,6 +154,10 @@ async fn list_actions_grouped(
     Json(state.deck.get_all_actions_grouped())
 }
 
+async fn list_plugins(State(state): State<AxumState>) -> Json<Vec<PluginData>> {
+    Json(state.deck.get_all_plugins())
+}
+
 async fn list_screens(State(state): State<AxumState>) -> Json<Vec<String>> {
     Json(state.deck.get_available_screens())
 }
@@ -206,6 +210,7 @@ where
             "/api/config/list/variables/grouped",
             get(list_variables_grouped),
         )
+        .route("/api/config/list/plugins", get(list_plugins))
         .route("/api/config/list/screens", get(list_screens))
         .route("/api/config/list/icons", get(list_icons))
         .route(

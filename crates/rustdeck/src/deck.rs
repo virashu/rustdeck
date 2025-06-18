@@ -9,7 +9,7 @@ use crate::config::paths::PLUGINS;
 use crate::config::{DeckButtonScreen, DeckConfig, DeckDimensionConfig};
 use crate::constants::{DECK_ACTION_ID, DECK_ACTION_NAME, DECK_ACTION_PREFIX};
 use crate::models::{
-    PluginActionArgsData, PluginActionsGroupedData, PluginActionsUngroupedData,
+    PluginActionArgsData, PluginActionsGroupedData, PluginActionsUngroupedData, PluginData,
     PluginVariablesGroupedData, PluginVariablesUngroupedData,
 };
 use crate::plugins::PluginStore;
@@ -197,6 +197,10 @@ impl Deck {
         let mut actions = self.plugin_store.get_all_actions_grouped();
         actions.insert(0, self.deck_actions.clone());
         actions
+    }
+
+    pub fn get_all_plugins(&self) -> Vec<PluginData> {
+        self.plugin_store.get_all_plugins()
     }
 
     pub fn get_all_icons(&self) -> Vec<String> {

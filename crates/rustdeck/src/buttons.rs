@@ -1,11 +1,12 @@
 use std::collections::HashMap;
 
+use regex::Captures;
 use serde::{Deserialize, Serialize};
 
 use crate::plugins::PluginStore;
 
 static BUTTON_VAR_REGEX: std::sync::LazyLock<regex::Regex> = std::sync::LazyLock::new(|| {
-    regex::Regex::new(r"\{(?<v>[a-zA-Z0-9_]+\.[a-zA-Z0-9_]+)\}").unwrap()
+    regex::Regex::new(r"\{(?<var_id>[a-zA-Z0-9_]+\.[a-zA-Z0-9_]+)\}").unwrap()
 });
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
@@ -118,24 +119,12 @@ impl DeckButton {
             return self.template.clone();
         }
 
-        let input = &self.template;
-
-        let a: Vec<(String, String)> = BUTTON_VAR_REGEX
-            .captures_iter(input)
-            .map(|m| {
-                let ident = &m["v"];
-                let value = vars.get(ident);
-                (ident.to_owned(), value)
+        BUTTON_VAR_REGEX
+            .replace_all(&self.template, |caps: &Captures| {
+                let ident = &caps["var_id"];
+                vars.get(ident)
             })
-            .collect();
-
-        let mut output = String::from(input);
-
-        for (s, var) in a {
-            output = output.replace(&format!("{{{s}}}"), &var);
-        }
-
-        output
+            .to_string()
     }
 
     pub fn render(&self, pos: (u32, u32), vars: &mut VariableRenderer) -> RenderedDeckButton {
