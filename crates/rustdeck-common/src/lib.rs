@@ -170,6 +170,86 @@ macro_rules! decl_plugin {
             })) as *const $crate::Plugin
         }
     };
+
+    /* Without actions nor variables */
+    (
+        id: $id:literal,
+        name: $name:literal,
+        desc: $desc:literal,
+
+        fn_init: $user_fn_init:expr,
+        fn_update: $user_fn_update:expr,
+        fn_get_variable: $user_fn_get_variable:expr,
+        fn_run_action: $user_fn_run_action:expr
+
+        $(,)?
+    ) => {
+        decl_plugin! {
+            id: $id,
+            name: $name,
+            desc: $desc,
+            variables: ::std::ptr::null(),
+            actions: ::std::ptr::null(),
+            fn_init: $user_fn_init,
+            fn_update: $user_fn_update,
+            fn_get_variable: $user_fn_get_variable,
+            fn_run_action: $user_fn_run_action
+        }
+    };
+
+    /* With variables */
+    (
+        id: $id:literal,
+        name: $name:literal,
+        desc: $desc:literal,
+        variables: $variables:expr,
+
+        fn_init: $user_fn_init:expr,
+        fn_update: $user_fn_update:expr,
+        fn_get_variable: $user_fn_get_variable:expr,
+        fn_run_action: $user_fn_run_action:expr
+
+        $(,)?
+    ) => {
+        decl_plugin! {
+            id: $id,
+            name: $name,
+            desc: $desc,
+            variables: $variables,
+            actions: ::std::ptr::null(),
+            fn_init: $user_fn_init,
+            fn_update: $user_fn_update,
+            fn_get_variable: $user_fn_get_variable,
+            fn_run_action: $user_fn_run_action
+        }
+    };
+
+    /* With actions */
+    (
+        id: $id:literal,
+        name: $name:literal,
+        desc: $desc:literal,
+        actions: $actions:expr,
+
+        fn_init: $user_fn_init:expr,
+        fn_update: $user_fn_update:expr,
+        fn_get_variable: $user_fn_get_variable:expr,
+        fn_run_action: $user_fn_run_action:expr
+
+        $(,)?
+    ) => {
+        decl_plugin! {
+            id: $id,
+            name: $name,
+            desc: $desc,
+            variables: ::std::ptr::null(),
+            actions: $actions,
+            fn_init: $user_fn_init,
+            fn_update: $user_fn_update,
+            fn_get_variable: $user_fn_get_variable,
+            fn_run_action: $user_fn_run_action
+        }
+    };
 }
 
 #[macro_export]

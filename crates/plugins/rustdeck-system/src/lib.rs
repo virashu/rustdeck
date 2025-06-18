@@ -31,7 +31,6 @@ unsafe extern "C" fn build() -> *const Plugin {
         id: "rustdeck_system",
         name: "RustDeck System",
         desc: "System management plugin",
-        variables: ::std::ptr::null(),
         actions: actions!(
             decl_action! {
                 id: "shutdown",
