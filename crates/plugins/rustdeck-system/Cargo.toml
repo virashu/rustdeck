@@ -1,0 +1,11 @@
+[package]
+name = "rustdeck-system"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+rustdeck-common = { path = "../../rustdeck-common" }
+system_shutdown = "4.0.1"
