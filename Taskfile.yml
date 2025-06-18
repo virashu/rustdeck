@@ -2,52 +2,72 @@
 
 version: "3"
 
+vars:
+  builtin_plugins:
+    sh: ls ./crates/plugins
+
 tasks:
-  plugins_dir:
-    cmd: mkdir -p ./plugins/
-    generates:
-      - ./plugins/
-    status:
-      - test -d directory
+  mkdir:
+    run: when_changed
+    cmd: mkdir -p {{.PATH}}
+    requires:
+      vars: [PATH]
+
+  build_rust_plugin:
+    vars:
+      FILE:
+        sh: echo {{.PACKAGE}} | sed 's/-/_/' # Rust replaces hyphens with underscores in binaries' names
+      ARGS: '{{ .ARGS | default "" }}'
+      DEST: '{{ .DEST | default "./plugins" }}'
+    cmds:
+      - task: mkdir
+        vars:
+          PATH: "{{.DEST}}"
+      - cargo build --package {{.PACKAGE}} {{.ARGS}}
+      - cmd: cp -pf ./target/debug/lib{{.FILE}}.so {{.DEST}}/{{.FILE}}.deckplugin
+        platforms: [linux]
+      - cmd: cp -pf ./target/debug/{{.FILE}}.dll {{.DEST}}/{{.FILE}}.deckplugin
+        platforms: [windows]
+    requires:
+      vars: [PACKAGE, ARGS, DEST]
 
   build_example_plugin:
-    deps: [plugins_dir]
     cmds:
-      - cargo build --package sample_plugin
-      - cmd: cp -pf ./target/debug/libsample_plugin.so ./plugins/sample_plugin.deckplugin
-        platforms: [linux]
-      - cmd: cp -pf ./target/debug/sample_plugin.dll ./plugins/sample_plugin.deckplugin
-        platforms: [windows]
+      - task: build_rust_plugin
+        vars: { PACKAGE: sample_plugin }
 
   build_example_c_plugin:
-    deps: [plugins_dir]
     cmds:
+      - mkdir -p ./plugins
       - gcc ./examples/plugins/sample_c_plugin/main.c -shared -o ./plugins/sample_c_plugin.deckplugin
 
-  build_media_plugin:
-    deps: [plugins_dir]
+  build_builtin_plugins:
+    vars:
+      ARGS: '{{ .ARGS | default "" }}'
+      DEST: '{{ .DEST | default "./plugins" }}'
     cmds:
-      - cargo build --package rustdeck-media
-      - cmd: cp -pf ./target/debug/librustdeck_media.so ./plugins/rustdeck_media.deckplugin
-        platforms: [linux]
-      - cmd: cp -pf ./target/debug/rustdeck_media.dll ./plugins/rustdeck_media.deckplugin
-        platforms: [windows]
+      - for: { var: builtin_plugins }
+        task: build_rust_plugin
+        vars:
+          PACKAGE: "{{.ITEM}}"
+          DEST: "{{.DEST}}"
+          ARGS: "{{.ARGS}}"
+    requires:
+      vars: [ARGS, DEST]
 
   package:
     cmds:
-      - mkdir -p ./dist/pack/plugins
+      - rm -rf ./dist
 
-      - cargo build --package rustdeck-media --release
-      - cargo build --package rustdeck       --release --features portable
+      - task: build_builtin_plugins
+        vars:
+          DEST: ./dist/pack/plugins
+          ARGS: --release
 
+      - cargo build --package rustdeck --release --features portable
       - cmd: cp ./target/release/rustdeck ./dist/pack/rustdeck
         platforms: [linux]
       - cmd: cp ./target/release/rustdeck.exe ./dist/pack/rustdeck.exe
-        platforms: [windows]
-
-      - cmd: cp ./target/release/librustdeck_media.so ./dist/pack/plugins/rustdeck_media.deckplugin
-        platforms: [linux]
-      - cmd: cp ./target/release/rustdeck_media.dll ./dist/pack/plugins/rustdeck_media.deckplugin
         platforms: [windows]
 
       - 7z a -tzip -r ./dist/rustdeck.zip -w ./dist/pack/*
@@ -56,7 +76,7 @@ tasks:
     deps:
       - build_example_plugin
       - build_example_c_plugin
-      - build_media_plugin
+      - task: build_builtin_plugins
 
     cmds:
       - mkdir -p ./icons/
