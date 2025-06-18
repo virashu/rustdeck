@@ -1,5 +1,6 @@
 enum Type
 {
+  Boolean,
   Integer,
   Floating,
   String

@@ -105,6 +105,7 @@ pub mod util {
     }
 }
 
+// TODO: make some fields optional
 #[macro_export]
 macro_rules! decl_plugin {
     /* With actions and variables */

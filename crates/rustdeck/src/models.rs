@@ -1,6 +1,13 @@
 use serde::Serialize;
 
 #[derive(Serialize, Clone)]
+pub struct PluginActionArgsData {
+    pub id: String,
+    pub description: String,
+    pub r#type: String,
+}
+
+#[derive(Serialize, Clone)]
 pub struct PluginActionsUngroupedData {
     /// Action id
     pub id: String,
@@ -8,6 +15,8 @@ pub struct PluginActionsUngroupedData {
     pub name: String,
     /// Action description
     pub description: String,
+    /// Action arguments
+    pub args: Vec<PluginActionArgsData>,
 }
 
 #[derive(Serialize, Clone)]

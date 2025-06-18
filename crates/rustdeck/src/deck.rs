@@ -9,8 +9,8 @@ use crate::config::paths::PLUGINS;
 use crate::config::{DeckButtonScreen, DeckConfig, DeckDimensionConfig};
 use crate::constants::{DECK_ACTION_ID, DECK_ACTION_NAME, DECK_ACTION_PREFIX};
 use crate::models::{
-    PluginActionsGroupedData, PluginActionsUngroupedData, PluginVariablesGroupedData,
-    PluginVariablesUngroupedData,
+    PluginActionArgsData, PluginActionsGroupedData, PluginActionsUngroupedData,
+    PluginVariablesGroupedData, PluginVariablesUngroupedData,
 };
 use crate::plugins::PluginStore;
 
@@ -60,6 +60,11 @@ impl Deck {
                     id: String::from("switch_screen"),
                     name: String::from("Switch screen"),
                     description: String::new(),
+                    args: vec![PluginActionArgsData {
+                        id: String::from("screen"),
+                        description: String::from("Screen to switch to"),
+                        r#type: String::from("string"),
+                    }],
                 }],
             },
         })

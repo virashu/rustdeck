@@ -4,8 +4,8 @@ use std::path::Path;
 use std::sync::RwLock;
 
 use crate::models::{
-    PluginActionsGroupedData, PluginActionsUngroupedData, PluginVariablesGroupedData,
-    PluginVariablesUngroupedData,
+    PluginActionArgsData, PluginActionsGroupedData, PluginActionsUngroupedData,
+    PluginVariablesGroupedData, PluginVariablesUngroupedData,
 };
 
 use super::{Plugin, load_plugins_at};
@@ -144,6 +144,21 @@ impl PluginStore {
                     id: act_id,
                     name: act.name.clone(),
                     description: act.description.clone(),
+                    args: act
+                        .args
+                        .iter()
+                        .cloned()
+                        .map(|a| PluginActionArgsData {
+                            id: a.id,
+                            description: a.description,
+                            r#type: String::from(match a.r#type {
+                                0 => "bool",
+                                1 => "int",
+                                2 => "float",
+                                _ => "string",
+                            }),
+                        })
+                        .collect(),
                 });
             }
         }
@@ -167,6 +182,21 @@ impl PluginStore {
                         id: format!("{plugin_id}.{}", a.id),
                         name: a.name,
                         description: a.description,
+                        args: a
+                            .args
+                            .iter()
+                            .cloned()
+                            .map(|ar| PluginActionArgsData {
+                                id: ar.id,
+                                description: ar.description,
+                                r#type: String::from(match ar.r#type {
+                                    0 => "bool",
+                                    1 => "int",
+                                    2 => "float",
+                                    _ => "string",
+                                }),
+                            })
+                            .collect(),
                     })
                     .collect(),
             });

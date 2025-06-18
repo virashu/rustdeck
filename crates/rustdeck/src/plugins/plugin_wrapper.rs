@@ -23,11 +23,25 @@ unsafe fn read_drop_pointer(ptr: *mut c_char) -> String {
     string
 }
 
+// Types
+// 0 = Bool
+// 1 = Int
+// 2 = Float
+// 3 = String
+
+#[derive(Clone)]
+pub struct ActionArg {
+    pub id: String,
+    pub description: String,
+    pub r#type: i32,
+}
+
 #[derive(Clone)]
 pub struct Action {
     pub id: String,
     pub name: String,
     pub description: String,
+    pub args: Vec<ActionArg>,
 }
 
 #[derive(Clone)]
@@ -37,10 +51,11 @@ pub struct Variable {
     pub r#type: i32,
 }
 
+/// Wrapper to isolate all the unsafe operations
+///
+/// wraps `rustdeck_common::Plugin`
 pub struct Plugin {
-    #[allow(dead_code, reason = "WIP")]
     pub name: String,
-    #[allow(dead_code, reason = "WIP")]
     pub description: String,
     pub id: String,
     pub actions: Vec<Action>,
@@ -104,25 +119,30 @@ impl Plugin {
                     .unwrap()
                     .as_ref()
                 {
+                    let mut args = Vec::new();
+
+                    if !act.args.is_null() {
+                        //
+                        let mut args_offset = 0;
+                        while let Some(arg) =
+                            act.args.offset(args_offset).as_ref().unwrap().as_ref()
+                        {
+                            args.push(ActionArg {
+                                id: util::ptr_to_str(arg.id).to_owned(),
+                                description: util::ptr_to_str(arg.desc).to_owned(),
+                                r#type: arg.r#type,
+                            });
+
+                            args_offset += 1;
+                        }
+                    }
+
                     actions.push(Action {
                         id: util::ptr_to_str(act.id).to_owned(),
                         name: util::ptr_to_str(act.name).to_owned(),
                         description: util::ptr_to_str(act.desc).to_owned(),
+                        args,
                     });
-
-                    // if act.args.is_null() {
-                    //     //
-                    // } else {
-                    //     //
-                    //     let mut args_offset = 0;
-                    //     while let Some(arg) =
-                    //         act.args.offset(args_offset).as_ref().unwrap().as_ref()
-                    //     {
-                    //         // util::ptr_to_str(arg.id)
-                    //         // util::ptr_to_str(arg.desc)
-                    //         args_offset += 1;
-                    //     }
-                    // }
 
                     actions_offset += 1;
                 }
