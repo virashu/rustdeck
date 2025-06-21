@@ -30,8 +30,8 @@ pub struct DeckButtonStyle {
 impl Default for DeckButtonStyle {
     fn default() -> Self {
         Self {
-            text_size: 24,
             text_align: DeckButtonStyleTextAlign::default(),
+            text_size: 24,
         }
     }
 }
@@ -125,9 +125,9 @@ impl RawDeckButton {
     pub fn render(&self, pos: (u32, u32), vars: &mut VariableRenderer) -> RenderedDeckButton {
         RenderedDeckButton {
             position: DeckButtonPos::from_yx(pos),
+            content: self.render_content(vars),
             style: self.style.clone(),
             icon: self.icon.clone(),
-            content: self.render_content(vars),
         }
     }
 }

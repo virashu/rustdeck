@@ -20,13 +20,16 @@ impl Default for DeckDimensionConfig {
 pub type DeckButtonScreen = HashMap<(u32, u32), RawDeckButton>;
 pub type DeckScreens = IndexMap<String, DeckButtonScreen>;
 
+/// Raw deck button with position
 #[derive(Deserialize, Serialize)]
 struct SerializedDeckButton {
     position: DeckButtonPos,
     style: DeckButtonStyle,
     template: String,
-    on_click_action: Option<RawDeckButtonAction>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     icon: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    on_click_action: Option<RawDeckButtonAction>,
 }
 
 impl SerializedDeckButton {
@@ -34,9 +37,9 @@ impl SerializedDeckButton {
         (
             self.position.as_yx(),
             RawDeckButton {
+                template: self.template,
                 style: self.style,
                 icon: self.icon,
-                template: self.template,
                 on_click_action: self.on_click_action,
             },
         )
@@ -45,10 +48,10 @@ impl SerializedDeckButton {
     pub fn from_deck_button(pos: (u32, u32), value: RawDeckButton) -> Self {
         Self {
             position: DeckButtonPos::from_yx(pos),
+            template: value.template,
+            style: value.style,
             icon: value.icon,
             on_click_action: value.on_click_action,
-            style: value.style,
-            template: value.template,
         }
     }
 }

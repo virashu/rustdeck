@@ -8,7 +8,7 @@ pub enum PluginLoadError {
     /// Error getting function
     #[allow(dead_code)]
     SymbolError(libloading::Error),
-    /// Plugin build funciton returned a null pointer
+    /// Plugin build function returned a null pointer
     BuildError,
     /// Other libloading errors
     GenericLibError(libloading::Error),
@@ -18,20 +18,21 @@ pub enum PluginLoadError {
     FormatError(String),
 }
 
+fn win_error_to_err_code(err: &str) -> Result<i32, ()> {
+    err.split_once(',')
+        .ok_or(())?
+        .0
+        .strip_prefix("Os { code: ")
+        .ok_or(())?
+        .parse()
+        .map_err(|_| ())
+}
+
 impl From<libloading::Error> for PluginLoadError {
     fn from(value: libloading::Error) -> Self {
         match value {
             libloading::Error::LoadLibraryExW { ref source } => {
-                let err_code: Result<i32, ()> = try {
-                    format!("{source:?}")
-                        .split_once(',')
-                        .ok_or(())?
-                        .0
-                        .strip_prefix("Os { code: ")
-                        .ok_or(())?
-                        .parse()
-                        .map_err(|_| ())?
-                };
+                let err_code = win_error_to_err_code(&format!("{source:?}"));
 
                 match err_code {
                     Ok(193) => Self::NotALibrary(value),
@@ -39,16 +40,7 @@ impl From<libloading::Error> for PluginLoadError {
                 }
             }
             libloading::Error::GetProcAddress { ref source } => {
-                let err_code: Result<i32, ()> = try {
-                    format!("{source:?}")
-                        .split_once(',')
-                        .ok_or(())?
-                        .0
-                        .strip_prefix("Os { code: ")
-                        .ok_or(())?
-                        .parse()
-                        .map_err(|_| ())?
-                };
+                let err_code = win_error_to_err_code(&format!("{source:?}"));
 
                 match err_code {
                     Ok(127) => Self::SymbolError(value),
@@ -70,7 +62,7 @@ impl std::fmt::Display for PluginLoadError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::NotALibrary(_) => write!(f, "Not a library"),
-            Self::SymbolError(_) => write!(f, "Plugin missing exported `build` functiton"),
+            Self::SymbolError(_) => write!(f, "Plugin missing exported `build` function"),
             Self::GenericLibError(e) => write!(f, "Error loading library: {e}"),
             Self::BuildError => write!(f, "Plugin build function returned a null pointer"),
             Self::ReadError(e) => write!(f, "Error reading from plugin: {e}"),

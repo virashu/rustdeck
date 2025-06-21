@@ -119,6 +119,10 @@ pub mod util {
         }
     }
 
+    /// # Safety
+    /// Checks for null pointer
+    /// # Errors
+    /// Returns a `PtrToStrError::NullPtrError` if pointer is null, or `PtrToStrError::Utf8Error` if `CStr::to_str()` method fails
     pub unsafe fn try_ptr_to_str<'a>(ptr: *const c_char) -> Result<&'a str, PtrToStrError> {
         if ptr.is_null() {
             return Err(PtrToStrError::NullPtrError);

@@ -20,6 +20,8 @@ impl IconStore {
         self.icons.get(id.as_ref())
     }
 
+    // TODO
+    #[allow(dead_code, clippy::unused_self, clippy::needless_pass_by_ref_mut, reason = "TODO")]
     pub fn add_icon(&mut self) {}
 
     pub fn keys(&self) -> Vec<String> {

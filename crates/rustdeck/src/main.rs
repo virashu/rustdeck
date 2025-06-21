@@ -1,4 +1,3 @@
-#![feature(try_blocks)]
 mod buttons;
 mod config;
 mod constants;
@@ -17,7 +16,6 @@ use crate::{
 };
 
 fn init_dirs() {
-    tracing::info!("Plugins dir: {}", &*paths::PLUGINS);
     fs::create_dir_all(&*paths::PLUGINS).unwrap();
     fs::create_dir_all(&*paths::ICONS).unwrap();
 }
