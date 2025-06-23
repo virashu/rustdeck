@@ -31,9 +31,10 @@ unsafe fn read_drop_pointer(ptr: *mut c_char) -> String {
 // 2 = Float
 // 3 = String
 
+/// Args are positional
 #[derive(Clone)]
 pub struct ActionArg {
-    pub id: String,
+    pub name: String,
     pub description: String,
     pub r#type: i32,
 }
@@ -129,7 +130,7 @@ impl Plugin {
                             act.args.offset(args_offset).as_ref().unwrap().as_ref()
                         {
                             args.push(ActionArg {
-                                id: util::try_ptr_to_str(arg.id)?.to_owned(),
+                                name: util::try_ptr_to_str(arg.name)?.to_owned(),
                                 description: util::try_ptr_to_str(arg.desc)?.to_owned(),
                                 r#type: arg.r#type,
                             });

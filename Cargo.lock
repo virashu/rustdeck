@@ -886,7 +886,7 @@ checksum = "47e1ffaa40ddd1f3ed91f717a33c8c0ee23fff369e3aa8772b9605cc1d22f4c3"
 [[package]]
 name = "media_session"
 version = "0.1.0"
-source = "git+https://github.com/virashu/media-session.rs#ed10222dfba6f67cd8906f20fb45903ed8e8e000"
+source = "git+https://github.com/virashu/media-session.rs#f34ca6616f7910b0ebd4b7c508580e84728b4833"
 dependencies = [
  "base64",
  "dbus",

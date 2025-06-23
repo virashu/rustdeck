@@ -65,7 +65,7 @@ impl Deck {
                     name: String::from("Switch screen"),
                     description: String::new(),
                     args: vec![PluginActionArgsData {
-                        id: String::from("screen"),
+                        name: String::from("To "),
                         description: String::from("Screen to switch to"),
                         r#type: String::from("string"),
                     }],
@@ -115,6 +115,18 @@ impl Deck {
             Some(act) if act.id.starts_with(DECK_ACTION_PREFIX) => self.try_run_deck_action(&act),
             Some(act) => self.plugin_store.try_run_action(&act),
             None => Ok(()),
+        }
+    }
+
+    fn validate_deck_action_args(&self, action: &RawDeckButtonAction) -> Result<(), String> {
+        Ok(())
+    }
+
+    pub fn validate_action_args(&self, action: &RawDeckButtonAction) -> Result<(), String> {
+        if action.id.starts_with(DECK_ACTION_PREFIX) {
+            self.validate_deck_action_args(action)
+        } else {
+            self.plugin_store.validate_action_args(action)
         }
     }
 
@@ -213,8 +225,16 @@ impl Deck {
     }
 
     /// Change raw button properties (`template`, `on_click_action`, etc.)
+    ///
+    /// Returns without updating the button if validation fails
     #[allow(clippy::significant_drop_tightening, reason = "false-positive")] // Bro tweaking
     pub fn update_button(&self, pos: (u32, u32), update: DeckButtonUpdate) {
+        if let Some(action) = &update.on_click_action {
+            if self.validate_action_args(action).is_err() {
+                return;
+            }
+        }
+
         {
             let mut screens_lock = self.screens.write();
             let screen = screens_lock
@@ -287,7 +307,7 @@ impl Deck {
             let mut screens_lock = self.screens.write();
             let index = screens_lock.get_index_of(old_id).unwrap();
             let screen = screens_lock.swap_remove(old_id).unwrap();
-            screens_lock.insert(new_id, screen);
+            screens_lock.insert(new_id.clone(), screen);
             let last = screens_lock.len() - 1;
             screens_lock.swap_indices(index, last);
         }

@@ -145,7 +145,7 @@ impl PluginStore {
                     .iter()
                     .cloned()
                     .map(|a| PluginActionArgsData {
-                        id: a.id,
+                        name: a.name,
                         description: a.description,
                         r#type: String::from(match a.r#type {
                             0 => "bool",
@@ -203,5 +203,34 @@ impl PluginStore {
                 }
             })
             .collect()
+    }
+
+    pub fn validate_action_args(&self, act: &RawDeckButtonAction) -> Result<(), String> {
+        let (plug_id, act_id) = act
+            .id
+            .split_once('.')
+            .ok_or_else(|| format!("Wrong action format: `{}`", act.id))?;
+
+        {
+            let plugin = self
+                .plugins
+                .get(plug_id)
+                .ok_or_else(|| format!("Cannot find plugin: `{plug_id}`"))?
+                .read()
+                .unwrap();
+
+            if let Some(action_struct) = plugin.actions.iter().find(|v| v.id == act_id) {
+                if action_struct.args.len() != act.args.len() {
+                    return Err("Argument list length doesn't match".into());
+                }
+                
+            } else {
+                return Err(format!(
+                    "Plugin `{plug_id}` does not provide action `{act_id}`"
+                ));
+            }
+        }
+
+        Ok(())
     }
 }

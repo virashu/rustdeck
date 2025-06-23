@@ -52,7 +52,7 @@ impl TryFrom<&str> for Type {
 
 #[repr(C)]
 pub struct ActionArg {
-    pub id: *const c_char,
+    pub name: *const c_char,
     pub desc: *const c_char,
     pub r#type: i32,
 }
