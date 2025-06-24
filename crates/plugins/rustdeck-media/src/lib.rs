@@ -1,6 +1,6 @@
 use futures::executor::block_on;
 use media_session::{MediaInfo, MediaSession, traits::MediaSessionControls};
-use rustdeck_common::{actions, decl_action, decl_plugin, decl_variable, export_plugin, variables, Plugin};
+use rustdeck_common::{actions, decl_action, decl_plugin, decl_variable, export_plugin, variables};
 
 use std::panic::catch_unwind;
 

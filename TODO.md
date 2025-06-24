@@ -4,3 +4,5 @@
 - Validation for everything
 - Dynamic icons (updated by plugins; for example, cover of now playing media)
 - Transfer icons in Base64
+- Plugin config
+- Plugin pre-init (after install) config

@@ -1,6 +1,4 @@
-use rustdeck_common::{
-    Plugin, actions, decl_action, decl_plugin, decl_variable, export_plugin, variables,
-};
+use rustdeck_common::{actions, decl_action, decl_plugin, decl_variable, export_plugin, variables};
 
 struct PluginState {
     counter: i32,

@@ -155,7 +155,7 @@ pub mod util {
 macro_rules! export_plugin {
     ( $in:expr ) => {
         #[unsafe(no_mangle)]
-        unsafe extern "C" fn build() -> *const Plugin {
+        unsafe extern "C" fn build() -> *const $crate::Plugin {
             $in
         }
     };
