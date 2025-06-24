@@ -151,7 +151,16 @@ pub mod util {
     }
 }
 
-// TODO: make some fields optional
+#[macro_export]
+macro_rules! export_plugin {
+    ( $in:expr ) => {
+        #[unsafe(no_mangle)]
+        unsafe extern "C" fn build() -> *const Plugin {
+            $in
+        }
+    };
+}
+
 #[macro_export]
 macro_rules! decl_plugin {
     /* With actions and variables */

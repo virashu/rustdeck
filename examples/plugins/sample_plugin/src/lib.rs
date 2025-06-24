@@ -1,4 +1,6 @@
-use rustdeck_common::{Plugin, actions, decl_action, decl_plugin, decl_variable, variables};
+use rustdeck_common::{
+    Plugin, actions, decl_action, decl_plugin, decl_variable, export_plugin, variables,
+};
 
 struct PluginState {
     counter: i32,
@@ -30,8 +32,7 @@ fn get_variable(state: &PluginState, id: &str) -> String {
     }
 }
 
-#[unsafe(no_mangle)]
-unsafe extern "C" fn build() -> *const Plugin {
+export_plugin! {
     decl_plugin! {
         id: "plugin_test",
         name: "Sample Plugin",

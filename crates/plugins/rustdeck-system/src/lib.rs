@@ -1,4 +1,6 @@
-use rustdeck_common::{Plugin, actions, decl_action, decl_plugin, decl_variable, variables};
+use rustdeck_common::{
+    Plugin, actions, decl_action, decl_plugin, decl_variable, export_plugin, variables,
+};
 use system_shutdown::{reboot, shutdown};
 
 struct PluginState {}
@@ -41,8 +43,7 @@ fn get_variable(_: &PluginState, id: &str) -> String {
     }
 }
 
-#[unsafe(no_mangle)]
-unsafe extern "C" fn build() -> *const Plugin {
+export_plugin! {
     decl_plugin! {
         id: "rustdeck_system",
         name: "RustDeck System",

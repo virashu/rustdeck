@@ -1,6 +1,6 @@
 use futures::executor::block_on;
 use media_session::{MediaInfo, MediaSession, traits::MediaSessionControls};
-use rustdeck_common::{Plugin, actions, decl_action, decl_plugin, decl_variable, variables};
+use rustdeck_common::{actions, decl_action, decl_plugin, decl_variable, export_plugin, variables, Plugin};
 
 use std::panic::catch_unwind;
 
@@ -48,8 +48,7 @@ fn get_variable(_: &PluginState, id: &str) -> String {
     }
 }
 
-#[unsafe(no_mangle)]
-unsafe extern "C" fn build() -> *const Plugin {
+export_plugin! {
     decl_plugin! {
         id: "rustdeck_media",
         name: "RustDeck Media",
