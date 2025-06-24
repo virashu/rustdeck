@@ -26,12 +26,6 @@ unsafe fn read_drop_pointer(ptr: *mut c_char) -> String {
     string
 }
 
-// Types
-// 0 = Bool
-// 1 = Int
-// 2 = Float
-// 3 = String
-
 #[derive(Clone)]
 pub enum PluginDataType {
     Bool,
@@ -45,16 +39,16 @@ impl TryFrom<i32> for PluginDataType {
     type Error = PluginLoadError;
 
     fn try_from(value: i32) -> Result<Self, Self::Error> {
-        Ok(match value {
-            0 => Self::Bool,
-            1 => Self::Int,
-            2 => Self::Float,
-            3 => Self::String,
-            4 => Self::Enum,
+        match value {
+            0 => Ok(Self::Bool),
+            1 => Ok(Self::Int),
+            2 => Ok(Self::Float),
+            3 => Ok(Self::String),
+            4 => Ok(Self::Enum),
             _ => Err(PluginLoadError::FormatError(format!(
                 "No plugin data type with index '{value}'"
-            )))?,
-        })
+            ))),
+        }
     }
 }
 
@@ -99,7 +93,10 @@ pub struct Variable {
 
 /// Wrapper to isolate all the unsafe operations
 ///
-/// wraps `rustdeck_common::Plugin`
+/// Wraps `rustdeck_common::Plugin`
+///
+/// # Safety
+/// User has to lock the struct, as it itself has no mutexes
 pub struct Plugin {
     pub name: String,
     pub description: String,

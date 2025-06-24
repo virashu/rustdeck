@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "common.h"
+#include "../../../include/common.h"
 
 void*
 init()

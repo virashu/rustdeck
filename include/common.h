@@ -1,3 +1,7 @@
+//
+// This is C bindings for creating a Plugin
+//
+
 #include <stdbool.h>
 #include <stdint.h>
 
