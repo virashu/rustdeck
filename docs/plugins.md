@@ -1,0 +1,34 @@
+# Plugins
+
+## Examples
+
+Example of a Rust plugin is available in [/examples/plugins/sample_plugin](/examples/plugins/sample_plugin) \
+Types and macros are defined in [rustdeck-common](/crates/rustdeck-common) crate
+
+Example of a C plugin is available in [/examples/plugins/sample_c_plugin](/examples/plugins/sample_c_plugin) \
+Types are defined in [/include/common.h](/include/common.h) header
+
+## Structure of a Plugin
+
+A plugin struct should have:
+- `id` (`const char*`) -- unique identifier
+- `name` (`const char*`) -- display name
+- `description` (`const char*`) -- full description
+
+- `variables` (`const Variable*[]` -> `const Variable* const*`) \
+  A pointer to first element of `NULL`-terminated array of pointers to `Variable` structs. \
+  Can be `NULL` to signify that plugin has no variables.
+
+- `actions` (`const Action*[]` -> `const Action* const*`) \
+  Similar to variables, a pointer to first element of `NULL`-terminated array of pointers to `Action` structs. \
+  Can be `NULL` to signify that plugin has no actions.
+
+- `fn_init` -- pointer to init function, that returns a pointer to _state_ (any pointer).
+- `fn_update` -- pointer to update function. Takes _state_ as first argument.
+- `fn_get_variable` -- pointer to function, that takes _state_ and _id_ (`const char*`) of a variable, and returns value of variable (`const char*`) (Can only be a string for now).
+- `fn_run_action` -- pointer to function, that takes _state_, _id_ (`const char*`) of an action and an array of [Arg](#arg) (`const Arg*`) \
+  Length of arg array guaranteed to be of required length, and guaranteed to have types provided in declaration of action.
+
+## Types
+
+### Arg
