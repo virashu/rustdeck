@@ -1,14 +1,32 @@
+#include <stdbool.h>
+#include <stdint.h>
+
+#ifdef _WIN32
+#define EXPORT __declspec(dllexport) __stdcall
+#else
+#define EXPORT
+#endif // _WIN32
+
 enum Type
 {
-  Boolean,
-  Integer,
-  Floating,
-  String
+  Bool,
+  Int,
+  Float,
+  String,
+  Enum,
 };
+
+typedef union
+{
+  const bool* b;
+  const int32_t* i;
+  const float* f;
+  const char* c;
+} Arg;
 
 typedef struct
 {
-  const char* id;
+  const char* name;
   const char* desc;
   const enum Type type;
 } ActionArg;
@@ -18,7 +36,7 @@ typedef struct
   const char* id;
   const char* name;
   const char* desc;
-  const ActionArg** args;
+  const ActionArg* const* args;
 } Action;
 
 typedef struct
@@ -33,11 +51,15 @@ typedef struct
   const char* id;
   const char* name;
   const char* desc;
-  const Variable** variables;
-  const Action** actions;
+  const Variable* const* variables;
+  const Action* const* actions;
 
   void* (*fn_init)(void);
   void (*fn_update)(void* state);
-  char* (*fn_get_variable)(void* state, char* id);
-  void (*fn_run_action)(void* state, char* id);
+  char* (*fn_get_variable)(void* state, const char* id);
+  void (*fn_run_action)(void* state, const char* id, const Arg* args);
 } Plugin;
+
+EXPORT
+const Plugin*
+build();

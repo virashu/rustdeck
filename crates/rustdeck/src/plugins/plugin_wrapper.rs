@@ -3,9 +3,10 @@ use libloading::Library;
 use std::{
     ffi::{CStr, CString, OsStr, c_char, c_void},
     fmt::Debug,
+    mem::ManuallyDrop,
 };
 
-use rustdeck_common::{BuildFn, Plugin as FFIPlugin, util};
+use rustdeck_common::{Arg, BuildFn, Plugin as FFIPlugin, util};
 
 use crate::constants::DECK_ACTION_ID;
 
@@ -31,12 +32,54 @@ unsafe fn read_drop_pointer(ptr: *mut c_char) -> String {
 // 2 = Float
 // 3 = String
 
+#[derive(Clone)]
+pub enum PluginDataType {
+    Bool,
+    Int,
+    Float,
+    String,
+    Enum,
+}
+
+impl TryFrom<i32> for PluginDataType {
+    type Error = PluginLoadError;
+
+    fn try_from(value: i32) -> Result<Self, Self::Error> {
+        Ok(match value {
+            0 => Self::Bool,
+            1 => Self::Int,
+            2 => Self::Float,
+            3 => Self::String,
+            4 => Self::Enum,
+            _ => Err(PluginLoadError::FormatError(format!(
+                "No plugin data type with index '{value}'"
+            )))?,
+        })
+    }
+}
+
+impl std::fmt::Display for PluginDataType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                Self::Bool => "bool",
+                Self::Int => "int",
+                Self::Float => "float",
+                Self::String => "string",
+                Self::Enum => "enum",
+            }
+        )
+    }
+}
+
 /// Args are positional
 #[derive(Clone)]
 pub struct ActionArg {
     pub name: String,
     pub description: String,
-    pub r#type: i32,
+    pub r#type: PluginDataType,
 }
 
 #[derive(Clone)]
@@ -51,7 +94,7 @@ pub struct Action {
 pub struct Variable {
     pub id: String,
     pub description: String,
-    pub r#type: i32,
+    pub r#type: PluginDataType,
 }
 
 /// Wrapper to isolate all the unsafe operations
@@ -106,7 +149,7 @@ impl Plugin {
                     variables.push(Variable {
                         id: util::try_ptr_to_str(var.id)?.to_owned(),
                         description: util::try_ptr_to_str(var.desc)?.to_owned(),
-                        r#type: var.r#type,
+                        r#type: var.r#type.try_into()?,
                     });
                     vars_offset += 1;
                 }
@@ -132,7 +175,7 @@ impl Plugin {
                             args.push(ActionArg {
                                 name: util::try_ptr_to_str(arg.name)?.to_owned(),
                                 description: util::try_ptr_to_str(arg.desc)?.to_owned(),
-                                r#type: arg.r#type,
+                                r#type: arg.r#type.try_into()?,
                             });
 
                             args_offset += 1;
@@ -169,11 +212,12 @@ impl Plugin {
         unsafe { (self.inner.fn_update)(self.state) }
     }
 
-    pub fn run_action(&self, id: String) {
+    pub fn run_action(&self, id: String, args: &[Arg]) {
         unsafe {
             (self.inner.fn_run_action)(
                 self.state,
                 CString::new(id).unwrap().as_ptr().cast::<c_char>(),
+                args.as_ptr(),
             );
         }
     }
@@ -189,6 +233,30 @@ impl Plugin {
             );
             read_drop_pointer(p)
         }
+    }
+
+    pub fn parse_args(proto: &Vec<ActionArg>, args: &[String]) -> Vec<Arg> {
+        args.iter()
+            .zip(proto)
+            .map(|(a, p)| match p.r#type {
+                PluginDataType::Bool => Arg {
+                    b: &(a.parse::<bool>().unwrap()),
+                },
+                PluginDataType::Int => Arg {
+                    i: &(a.parse::<i32>().unwrap()),
+                },
+                PluginDataType::Float => Arg {
+                    f: &(a.parse::<f32>().unwrap()),
+                },
+                PluginDataType::String => Arg {
+                    // FIXME: Leak.
+                    c: ManuallyDrop::new(CString::new(a.clone()).unwrap())
+                        .as_ptr()
+                        .cast::<c_char>(),
+                },
+                PluginDataType::Enum => todo!(),
+            })
+            .collect()
     }
 }
 

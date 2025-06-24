@@ -9,7 +9,7 @@ use crate::{
     },
     config::{DeckButtonScreen, DeckConfig, DeckDimensionConfig, paths::PLUGINS},
     constants::{DECK_ACTION_ID, DECK_ACTION_NAME, DECK_ACTION_PREFIX},
-    icon_store::IconStore,
+    icon_store::{IconStore, IconStoreGetError},
     models::{
         PluginActionArgsData, PluginActionsGroupedData, PluginActionsUngroupedData, PluginData,
         PluginVariablesGroupedData, PluginVariablesUngroupedData,
@@ -107,7 +107,7 @@ impl Deck {
             .get(self.current_screen_id.read().as_str())
             .unwrap()
             .get(&pos)
-            .expect("Failed to get button at required index")
+            .ok_or("Failed to get button at required index")?
             .on_click_action
             .clone();
 
@@ -118,24 +118,12 @@ impl Deck {
         }
     }
 
-    fn validate_deck_action_args(&self, action: &RawDeckButtonAction) -> Result<(), String> {
-        Ok(())
-    }
-
-    pub fn validate_action_args(&self, action: &RawDeckButtonAction) -> Result<(), String> {
-        if action.id.starts_with(DECK_ACTION_PREFIX) {
-            self.validate_deck_action_args(action)
-        } else {
-            self.plugin_store.validate_action_args(action)
-        }
-    }
-
-    /// Get disk path of icon by its id
-    pub fn get_icon<S>(&self, id: S) -> Option<&String>
+    /// Get raw image
+    pub fn get_icon_raw<S>(&self, id: S) -> Result<Vec<u8>, IconStoreGetError>
     where
         S: AsRef<str>,
     {
-        self.icon_store.get_icon(id)
+        self.icon_store.get_icon_raw(id)
     }
 
     //
@@ -229,12 +217,6 @@ impl Deck {
     /// Returns without updating the button if validation fails
     #[allow(clippy::significant_drop_tightening, reason = "false-positive")] // Bro tweaking
     pub fn update_button(&self, pos: (u32, u32), update: DeckButtonUpdate) {
-        if let Some(action) = &update.on_click_action {
-            if self.validate_action_args(action).is_err() {
-                return;
-            }
-        }
-
         {
             let mut screens_lock = self.screens.write();
             let screen = screens_lock

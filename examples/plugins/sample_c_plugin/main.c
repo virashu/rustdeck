@@ -1,14 +1,8 @@
 #include <assert.h>
 #include <stdio.h>
-#include <stdlib.h>
+#include <string.h>
 
 #include "common.h"
-
-#ifdef _WIN32
-#define EXPORT __declspec(dllexport) __stdcall
-#else
-#define EXPORT
-#endif // _WIN32
 
 void*
 init()
@@ -23,15 +17,17 @@ update(void* state)
 }
 
 char*
-get_variable(void* state, char* id)
+get_variable(void* state, const char* id)
 {
   return NULL;
 }
 
 void
-run_action(void* state, char* id)
+run_action(void* state, const char* id, const Arg* args)
 {
-  return;
+  if (!strcmp(id, "test_action")) {
+    printf("Test action called | Arg value: %s\n", args[0].c);
+  }
 }
 
 const Plugin somePlugin = {
@@ -40,18 +36,17 @@ const Plugin somePlugin = {
   .desc = "A sample plugin written in C",
   .variables =
     (const Variable*[]){
-      &(Variable){ .id = "a", .desc = "A Variable", .type = Integer },
-      &(Variable){ .id = "b", .desc = "B Variable", .type = Floating },
+      &(Variable){ .id = "a", .desc = "A Variable", .type = Int },
+      &(Variable){ .id = "b", .desc = "B Variable", .type = Float },
       NULL },
   .actions =
     (const Action*[]){
       &(Action){ .id = "test_action",
                  .name = "Test Action",
                  .desc = "A test action",
-                 .args = (const ActionArg*[]){ &(ActionArg){
-                                                 .id = "arg_1",
-                                                 .desc = "Arg test",
-                                                 .type = String },
+                 .args = (const ActionArg*[]){ &(ActionArg){ .name = "Arg #1",
+                                                             .desc = "A test argument for action",
+                                                             .type = String },
                                                NULL } },
       NULL },
   .fn_init = &init,
@@ -61,7 +56,7 @@ const Plugin somePlugin = {
 };
 
 EXPORT
-const void*
+const Plugin*
 build()
 {
   return &somePlugin;

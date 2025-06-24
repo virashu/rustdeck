@@ -4,10 +4,10 @@
     "rows": 3
   },
   "icons": {
-    "test_icon": "icons/test_icon.png",
-    "pause": "icons/pause.png",
-    "forward": "icons/forward.png",
-    "back": "icons/back.png"
+    "test_icon": "test_icon.png",
+    "pause": "pause.png",
+    "forward": "forward.png",
+    "back": "back.png"
   },
   "screens": [
     {

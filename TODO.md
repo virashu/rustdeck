@@ -1,5 +1,6 @@
 - Icons store
   - Endpoint to POST icons
   - Option to package icons (icon packs/icons with plugin)
-- Action args
+- Validation for everything
 - Dynamic icons (updated by plugins; for example, cover of now playing media)
+- Transfer icons in Base64

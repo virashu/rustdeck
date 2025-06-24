@@ -13,9 +13,10 @@ use tower_http::{
 };
 
 use crate::{
-    buttons::{RawDeckButton, DeckButtonPos, DeckButtonUpdate},
+    buttons::{DeckButtonPos, DeckButtonUpdate, RawDeckButton},
     config::DeckDimensionConfig,
     deck::{Deck, DeckScreen},
+    icon_store::IconStoreGetError,
     models::{
         PluginActionsGroupedData, PluginActionsUngroupedData, PluginData,
         PluginVariablesGroupedData, PluginVariablesUngroupedData,
@@ -41,10 +42,13 @@ async fn get_buttons(State(state): State<AxumState>) -> Json<DeckScreen> {
     Json(state.deck.get_rendered_screen())
 }
 
-async fn handle_click(State(state): State<AxumState>, Path(pos): Path<(u32, u32)>) -> StatusCode {
+async fn handle_click(
+    State(state): State<AxumState>,
+    Path(pos): Path<(u32, u32)>,
+) -> (StatusCode, String) {
     match state.deck.handle_click_at(pos) {
-        Ok(()) => StatusCode::OK,
-        Err(_) => StatusCode::BAD_REQUEST,
+        Ok(()) => (StatusCode::OK, String::new()),
+        Err(m) => (StatusCode::BAD_REQUEST, m),
     }
 }
 
@@ -81,17 +85,17 @@ async fn get_icon(
     State(state): State<AxumState>,
     Path(id): Path<String>,
 ) -> Result<impl IntoResponse, StatusCode> {
-    let icon_path = state.deck.get_icon(id);
+    // let icon_path = state.deck.get_icon_path(id);
+    let icon = state.deck.get_icon_raw(id);
 
-    icon_path.map_or_else(
-        || Err(StatusCode::NOT_FOUND),
-        |path| {
-            Ok((
-                axum::response::AppendHeaders([(header::CONTENT_TYPE, "image/png")]),
-                std::fs::read(path).unwrap(),
-            ))
-        },
-    )
+    match icon {
+        Ok(data) => Ok((
+            axum::response::AppendHeaders([(header::CONTENT_TYPE, "image/png")]),
+            data,
+        )),
+        Err(IconStoreGetError::NotFound) => Err(StatusCode::NOT_FOUND),
+        Err(IconStoreGetError::IoError(_)) => Err(StatusCode::INTERNAL_SERVER_ERROR),
+    }
 }
 
 async fn get_button(

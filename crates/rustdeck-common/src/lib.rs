@@ -51,6 +51,14 @@ impl TryFrom<&str> for Type {
 }
 
 #[repr(C)]
+pub union Arg {
+    pub b: *const bool,
+    pub i: *const i32,
+    pub f: *const f32,
+    pub c: *const c_char,
+}
+
+#[repr(C)]
 pub struct ActionArg {
     pub name: *const c_char,
     pub desc: *const c_char,
@@ -84,7 +92,8 @@ pub struct Plugin {
     pub fn_init: unsafe extern "C" fn() -> *mut c_void,
     pub fn_update: unsafe extern "C" fn(state: *mut c_void),
     pub fn_get_variable: unsafe extern "C" fn(state: *mut c_void, id: *const c_char) -> *mut c_char,
-    pub fn_run_action: unsafe extern "C" fn(state: *mut c_void, id: *const c_char),
+    pub fn_run_action:
+        unsafe extern "C" fn(state: *mut c_void, id: *const c_char, args: *const Arg),
 }
 
 pub type BuildFn = unsafe extern "C" fn() -> *const Plugin;
@@ -187,6 +196,7 @@ macro_rules! decl_plugin {
             unsafe extern "C" fn fn_run_action(
                 state: *mut ::std::ffi::c_void,
                 id: *const ::std::ffi::c_char,
+                args: *const $crate::Arg,
             ) {
                 let user_state = unsafe { &mut *state.cast() };
                 let id = unsafe { ::std::ffi::CStr::from_ptr(id).to_str().unwrap() };

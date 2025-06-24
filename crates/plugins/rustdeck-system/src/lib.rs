@@ -1,4 +1,4 @@
-use rustdeck_common::{Plugin, actions, decl_action, decl_plugin};
+use rustdeck_common::{Plugin, actions, decl_action, decl_plugin, decl_variable, variables};
 use system_shutdown::{reboot, shutdown};
 
 struct PluginState {}
@@ -21,8 +21,24 @@ fn run_action(_: &mut PluginState, id: &str) {
     }
 }
 
-fn get_variable(_: &PluginState, _: &str) -> String {
-    String::new()
+fn get_time() -> u64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0, |t| t.as_secs())
+}
+
+fn get_variable(_: &PluginState, id: &str) -> String {
+    match id {
+        "time_hours" => ((get_time() / 3600) % 24).to_string(),
+        "time_minutes" => ((get_time() / 60) % 60).to_string(),
+        "time" => {
+            let time = get_time();
+            let minutes = (time / 60) % 60;
+            let hours = (time / 3600) % 24;
+            format!("{hours}:{minutes}")
+        }
+        _ => String::new(),
+    }
 }
 
 #[unsafe(no_mangle)]
@@ -31,6 +47,23 @@ unsafe extern "C" fn build() -> *const Plugin {
         id: "rustdeck_system",
         name: "RustDeck System",
         desc: "System management plugin",
+        variables: variables!(
+            decl_variable! {
+                id: "time",
+                desc: "System time (hh:mm)",
+                vtype: "string"
+            },
+            decl_variable! {
+                id: "time_hours",
+                desc: "System time (hh)",
+                vtype: "string"
+            },
+            decl_variable! {
+                id: "time_minutes",
+                desc: "System time (mm)",
+                vtype: "string"
+            },
+        ),
         actions: actions!(
             decl_action! {
                 id: "shutdown",

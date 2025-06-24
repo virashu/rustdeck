@@ -36,7 +36,7 @@ pub struct PluginVariablesUngroupedData {
     /// Variable description
     pub description: String,
     /// Variable type
-    pub r#type: i32,
+    pub r#type: String,
 }
 
 #[derive(Serialize, Clone)]

@@ -1,5 +1,11 @@
 use std::collections::HashMap;
 
+pub enum IconStoreGetError {
+    NotFound,
+    #[allow(dead_code)]
+    IoError(std::io::Error),
+}
+
 pub struct IconStore {
     icons: HashMap<String, String>,
 }
@@ -13,15 +19,32 @@ impl IconStore {
         self.icons.clone()
     }
 
-    pub fn get_icon<S>(&self, id: S) -> Option<&String>
+    pub fn get_icon_path<S>(&self, id: S) -> Option<String>
     where
         S: AsRef<str>,
     {
-        self.icons.get(id.as_ref())
+        self.icons
+            .get(id.as_ref())
+            .map(|p| format!("{}/{p}", &*crate::config::paths::ICONS))
+    }
+
+    pub fn get_icon_raw<S>(&self, id: S) -> Result<Vec<u8>, IconStoreGetError>
+    where
+        S: AsRef<str>,
+    {
+        let icon_path = self.get_icon_path(id).ok_or(IconStoreGetError::NotFound)?;
+        std::fs::read(icon_path)
+            .inspect_err(|e| tracing::warn!("Failed to read registered image: {e}"))
+            .map_err(IconStoreGetError::IoError)
     }
 
     // TODO
-    #[allow(dead_code, clippy::unused_self, clippy::needless_pass_by_ref_mut, reason = "TODO")]
+    #[allow(
+        dead_code,
+        clippy::unused_self,
+        clippy::needless_pass_by_ref_mut,
+        reason = "TODO"
+    )]
     pub fn add_icon(&mut self) {}
 
     pub fn keys(&self) -> Vec<String> {

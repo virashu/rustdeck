@@ -64,8 +64,9 @@ impl PluginStore {
         }
     }
 
+    #[allow(clippy::significant_drop_tightening)]
     pub fn try_run_action(&self, act: &RawDeckButtonAction) -> Result<(), String> {
-        let (plug_id, i) = act
+        let (plug_id, act_id) = act
             .id
             .split_once('.')
             .ok_or_else(|| format!("Wrong action format: `{}`", act.id))?;
@@ -78,11 +79,20 @@ impl PluginStore {
                 .read()
                 .unwrap();
 
-            if !plugin.actions.iter().any(|v| v.id == i) {
-                return Err(format!("Plugin `{plug_id}` does not provide action `{i}`"));
-            }
+            if let Some(action_prototype) = plugin.actions.iter().find(|v| v.id == act_id) {
+                if action_prototype.args.len() != act.args.len() {
+                    return Err("Argument list length doesn't match".into());
+                }
 
-            plugin.run_action(i.to_string());
+                plugin.run_action(
+                    act_id.to_string(),
+                    &Plugin::parse_args(&action_prototype.args, &act.args),
+                );
+            } else {
+                return Err(format!(
+                    "Plugin `{plug_id}` does not provide action `{act_id}`"
+                ));
+            }
         }
 
         Ok(())
@@ -96,7 +106,7 @@ impl PluginStore {
             .map(|var| PluginVariablesUngroupedData {
                 id: format!("{}.{}", plugin.id, var.id),
                 description: var.description.clone(),
-                r#type: var.r#type,
+                r#type: var.r#type.to_string(),
             })
             .collect()
     }
@@ -109,7 +119,7 @@ impl PluginStore {
             .collect()
     }
 
-    /// Get all varibles grouped by plugin with plugin `id` and `name`
+    /// Get all variables grouped by plugin with plugin `id` and `name`
     ///
     /// Does not include plugins without variables
     pub fn get_all_variables_grouped(&self) -> Vec<PluginVariablesGroupedData> {
@@ -147,12 +157,7 @@ impl PluginStore {
                     .map(|a| PluginActionArgsData {
                         name: a.name,
                         description: a.description,
-                        r#type: String::from(match a.r#type {
-                            0 => "bool",
-                            1 => "int",
-                            2 => "float",
-                            _ => "string",
-                        }),
+                        r#type: a.r#type.to_string(),
                     })
                     .collect(),
             })
@@ -203,34 +208,5 @@ impl PluginStore {
                 }
             })
             .collect()
-    }
-
-    pub fn validate_action_args(&self, act: &RawDeckButtonAction) -> Result<(), String> {
-        let (plug_id, act_id) = act
-            .id
-            .split_once('.')
-            .ok_or_else(|| format!("Wrong action format: `{}`", act.id))?;
-
-        {
-            let plugin = self
-                .plugins
-                .get(plug_id)
-                .ok_or_else(|| format!("Cannot find plugin: `{plug_id}`"))?
-                .read()
-                .unwrap();
-
-            if let Some(action_struct) = plugin.actions.iter().find(|v| v.id == act_id) {
-                if action_struct.args.len() != act.args.len() {
-                    return Err("Argument list length doesn't match".into());
-                }
-                
-            } else {
-                return Err(format!(
-                    "Plugin `{plug_id}` does not provide action `{act_id}`"
-                ));
-            }
-        }
-
-        Ok(())
     }
 }
