@@ -1,15 +1,13 @@
+#![allow(clippy::trivially_copy_pass_by_ref, reason = "unit used as state")]
+
 use rustdeck_common::{actions, decl_action, decl_plugin, decl_variable, export_plugin, variables};
 use system_shutdown::{reboot, shutdown};
 
-struct PluginState {}
+const fn init() {}
 
-const fn init() -> PluginState {
-    PluginState {}
-}
+const fn update(_: &()) {}
 
-const fn update(_: &PluginState) {}
-
-fn run_action(_: &mut PluginState, id: &str) {
+fn run_action(_: &(), id: &str) {
     match id {
         "shutdown" => {
             _ = shutdown();
@@ -27,7 +25,7 @@ fn get_time() -> u64 {
         .map_or(0, |t| t.as_secs())
 }
 
-fn get_variable(_: &PluginState, id: &str) -> String {
+fn get_variable(_: &(), id: &str) -> String {
     match id {
         "time_hours" => ((get_time() / 3600) % 24).to_string(),
         "time_minutes" => ((get_time() / 60) % 60).to_string(),
