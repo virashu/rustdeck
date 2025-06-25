@@ -15,7 +15,7 @@ fn run_action(_: &(), id: &str) {
         "reboot" => {
             _ = reboot();
         }
-        _ => {}
+        _ => unreachable!(),
     }
 }
 
@@ -35,7 +35,7 @@ fn get_variable(_: &(), id: &str) -> String {
             let hours = (time / 3600) % 24;
             format!("{hours}:{minutes}")
         }
-        _ => String::new(),
+        _ => unreachable!(),
     }
 }
 

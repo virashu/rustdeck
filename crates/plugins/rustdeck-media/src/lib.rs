@@ -1,7 +1,5 @@
-use media_session::{MediaInfo, MediaSession, traits::MediaSessionControls};
+use media_session::{MediaSession, traits::MediaSessionControls};
 use rustdeck_common::{actions, decl_action, decl_plugin, decl_variable, export_plugin, variables};
-
-use std::panic::catch_unwind;
 
 struct PluginState {
     player: MediaSession,
@@ -16,32 +14,31 @@ fn init() -> PluginState {
 fn update(_: &mut PluginState) {}
 
 fn run_action(state: &PluginState, id: &str) {
-    match id {
-        "play_pause" => state.player.toggle_pause().unwrap(),
-        "play" => state.player.play().unwrap(),
-        "pause" => state.player.pause().unwrap(),
-        "stop" => state.player.stop().unwrap(),
-        "next" => state.player.next().unwrap(),
-        "previous" => state.player.prev().unwrap(),
-        _ => {}
-    }
-}
-
-fn get_info() -> Option<MediaInfo> {
-    let session = catch_unwind(MediaSession::new);
-    session.map_or(None, |session| Some(session.get_info()))
+    _ = match id {
+        "play_pause" => state.player.toggle_pause(),
+        "play" => state.player.play(),
+        "pause" => state.player.pause(),
+        "stop" => state.player.stop(),
+        "next" => state.player.next(),
+        "previous" => state.player.prev(),
+        _ => unreachable!(),
+    };
 }
 
 fn get_variable(_: &PluginState, id: &str) -> String {
-    let Some(media_info) = get_info() else {
+    let Ok(session) = std::panic::catch_unwind(MediaSession::new) else {
+        println!("Caught a panic in rustdeck-media while trying to create a session");
         return String::new();
     };
+    let media_info = session.get_info();
+
+    // let media_info = state.player.get_info();
 
     match id {
         "title" => media_info.title,
         "artist" => media_info.artist,
         "state" => media_info.state,
-        _ => String::new(),
+        _ => unreachable!(),
     }
 }
 
