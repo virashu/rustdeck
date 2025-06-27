@@ -17,7 +17,7 @@ fn get_variable(state: &PluginState, id: &str) -> String {
     if id == "counter" {
         state.counter.to_string()
     } else {
-        String::new()
+        unreachable!()
     }
 }
 
@@ -33,7 +33,7 @@ fn run_action(state: &mut PluginState, id: &str, args: &Args) {
         "clear" => {
             state.counter = 0;
         }
-        _ => {}
+        _ => unreachable!(),
     }
 }
 

@@ -22,14 +22,15 @@ fn update(_: &PluginState) {}
 
 fn get_variable(state: &PluginState, id: &str) -> String {
     if id == "scene" {
-        return state
+        state
             .rt
             .block_on(state.client.scenes().current_program_scene())
             .unwrap()
             .id
-            .name;
+            .name
+    } else {
+        unreachable!()
     }
-    String::new()
 }
 
 fn run_action(_: &PluginState, _: &str, _: &Args) {}
