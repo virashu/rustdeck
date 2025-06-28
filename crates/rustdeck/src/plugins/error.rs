@@ -72,3 +72,15 @@ impl std::fmt::Display for PluginLoadError {
 }
 
 impl std::error::Error for PluginLoadError {}
+
+#[derive(thiserror::Error, Debug)]
+pub enum ActionError {
+    #[error("Wrong action format: '{0}'")]
+    InvalidFormat(String),
+    #[error("Plugin `{0}` was not found")]
+    PluginNotFound(String),
+    #[error("Action `{action}` was not found for plugin `{plugin}`")]
+    ActionNotFound { action: String, plugin: String },
+    #[error("Arguments for action `{0}` did not pass validation")]
+    InvalidArgs(String),
+}

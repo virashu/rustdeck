@@ -47,3 +47,5 @@ pub struct Plugin {
 }
 
 pub type BuildFn = unsafe extern "C" fn() -> *const Plugin;
+
+pub type FreeStringFn = unsafe extern "C" fn(*mut c_char);

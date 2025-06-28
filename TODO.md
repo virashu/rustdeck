@@ -6,3 +6,4 @@
 - Transfer icons in Base64
 - Plugin config
 - Plugin pre-init (after install) config
+- Plugins' error handling

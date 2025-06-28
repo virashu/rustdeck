@@ -1,9 +1,10 @@
-use obws::Client;
-use rustdeck_common::{Args, decl_plugin, decl_variable, export_plugin, variables};
+use rustdeck_common::{
+    Args, actions, decl_action, decl_plugin, decl_variable, export_plugin, variables,
+};
 
 struct PluginState {
     rt: tokio::runtime::Runtime,
-    client: Client,
+    client: obws::Client,
 }
 
 fn init() -> PluginState {
@@ -12,7 +13,7 @@ fn init() -> PluginState {
         .build()
         .unwrap();
     let client = rt
-        .block_on(Client::connect("localhost", 4455, Some("")))
+        .block_on(obws::Client::connect("localhost", 4455, Some("")))
         .unwrap();
 
     PluginState { rt, client }
@@ -33,7 +34,24 @@ fn get_variable(state: &PluginState, id: &str) -> String {
     }
 }
 
-fn run_action(_: &PluginState, _: &str, _: &Args) {}
+fn run_action(state: &PluginState, id: &str, _: &Args) {
+    if id == "toggle_filter" {
+        state.rt.block_on(async {
+            let filters = state.client.filters();
+            let cur = filters.get("Display".into(), "blur").await.unwrap().enabled;
+            filters
+                .set_enabled(obws::requests::filters::SetEnabled {
+                    source: "Display".into(),
+                    filter: "blur",
+                    enabled: !cur,
+                })
+                .await
+                .unwrap();
+        });
+    } else {
+        unreachable!()
+    }
+}
 
 export_plugin! {
     decl_plugin! {
@@ -45,13 +63,21 @@ export_plugin! {
             decl_variable! {
                 id: "scene",
                 desc: "Scene",
-                vtype: "string"
-            }
+                vtype: "string",
+            },
+        ),
+
+        actions: actions!(
+            decl_action! {
+                id: "toggle_filter",
+                name: "Toggle blur filter",
+                desc: "",
+            },
         ),
 
         fn_init: init,
         fn_update: update,
         fn_get_variable: get_variable,
-        fn_run_action: run_action
+        fn_run_action: run_action,
     }
 }

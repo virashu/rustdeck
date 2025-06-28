@@ -6,12 +6,15 @@ use std::{
 
 use libloading::Library;
 use rustdeck_common::{
-    proto::{Arg, BuildFn, Plugin as FFIPlugin},
-    util,
+    proto::{Arg, BuildFn, FreeStringFn, Plugin as FFIPlugin},
+    util::{self, try_ptr_to_str},
 };
 
-use super::{datatype::PluginDataType, error::PluginLoadError, util::read_drop_pointer};
-use crate::{constants::DECK_ACTION_ID, plugins::safe_arg::SafeArg};
+use super::{datatype::PluginDataType, error::PluginLoadError};
+use crate::{
+    constants::DECK_ACTION_ID,
+    plugins::{error::ActionError, safe_arg::SafeArg},
+};
 
 /// Args are positional
 #[derive(Clone)]
@@ -51,9 +54,10 @@ pub struct Plugin {
 
     inner: &'static FFIPlugin,
     state: *mut c_void,
+    has_free: bool,
 
     #[allow(dead_code, reason = "plugin depends on library")]
-    lib: Library,
+    lib: Option<Library>,
 }
 
 impl Plugin {
@@ -63,9 +67,23 @@ impl Plugin {
     {
         unsafe {
             let lib = Library::new(path)?;
+
             let build: libloading::Symbol<BuildFn> = lib.get(b"build")?;
-            let plugin_raw = build();
-            let plugin = plugin_raw.as_ref().ok_or(PluginLoadError::BuildError)?;
+            let ptr = build();
+            let mut plugin = Self::try_from_ptr(ptr)?;
+
+            // Test for `free` function
+            let has_free = lib.get::<libloading::Symbol<FreeStringFn>>(b"free").is_ok();
+            plugin.has_free = has_free;
+            plugin.lib = Some(lib);
+
+            Ok(plugin)
+        }
+    }
+
+    pub fn try_from_ptr(ptr: *const FFIPlugin) -> Result<Self, PluginLoadError> {
+        unsafe {
+            let plugin = ptr.as_ref().ok_or(PluginLoadError::BuildError)?;
 
             let id = util::try_ptr_to_str(plugin.id)?.to_owned();
 
@@ -144,8 +162,9 @@ impl Plugin {
                 actions,
                 variables,
                 inner: plugin,
+                has_free: false,
                 state,
-                lib,
+                lib: None,
             })
         }
     }
@@ -154,17 +173,43 @@ impl Plugin {
         unsafe { (self.inner.fn_update)(self.state) }
     }
 
-    pub fn run_action(&self, id: String, args: &[SafeArg]) {
+    fn free(&self, ptr: *mut c_char) {
+        if !self.has_free {
+            return;
+        }
+
+        unsafe {
+            let free: libloading::Symbol<FreeStringFn> =
+                self.lib.as_ref().unwrap().get(b"free").unwrap();
+            free(ptr);
+        }
+    }
+
+    /// Validate args and run action
+    pub fn run_action(&self, act_id: String, args: &[String]) -> Result<(), ActionError> {
+        let Some(action_prototype) = self.actions.iter().find(|v| v.id == act_id) else {
+            return Err(ActionError::ActionNotFound {
+                plugin: self.id.clone(),
+                action: act_id,
+            });
+        };
+
+        let safe_args = Self::parse_args(&action_prototype.args, args)
+            .map_err(|_| ActionError::InvalidArgs(act_id.clone()))?;
+
         unsafe {
             (self.inner.fn_run_action)(
                 self.state,
-                CString::new(id).unwrap().as_ptr().cast::<c_char>(),
-                args.iter()
+                CString::new(act_id).unwrap().as_ptr().cast::<c_char>(),
+                safe_args
+                    .iter()
                     .map(super::safe_arg::SafeArg::as_arg)
                     .collect::<Vec<Arg>>()
                     .as_ptr(),
             );
         }
+
+        Ok(())
     }
 
     pub fn get_variable<T>(&self, id: T) -> String
@@ -172,38 +217,172 @@ impl Plugin {
         T: AsRef<str>,
     {
         unsafe {
-            let p = (self.inner.fn_get_variable)(
+            let res_ptr = (self.inner.fn_get_variable)(
                 self.state,
                 CString::new(id.as_ref()).unwrap().as_ptr().cast::<c_char>(),
             );
-            read_drop_pointer(p)
+            let res = try_ptr_to_str(res_ptr).unwrap().to_owned();
+
+            // FIXME: Memory Leak. Free the pointer memory here
+            self.free(res_ptr);
+
+            #[allow(
+                clippy::let_and_return,
+                reason = "WIP: Need deallocation between to_owned and return"
+            )]
+            res
         }
     }
 
-    pub fn parse_args(proto: &Vec<ActionArg>, args: &[String]) -> Vec<SafeArg> {
-        args.iter()
-            .zip(proto)
-            .map(|(a, p)| match p.r#type {
+    pub fn parse_args(
+        proto: &[ActionArg],
+        args: &[String],
+    ) -> Result<Vec<SafeArg>, Box<dyn std::error::Error>> {
+        if proto.len() != args.len() {
+            return Err("Argument list length doesn't match".into());
+        }
+
+        let mut parsed = Vec::with_capacity(proto.len());
+
+        for (pr, arg_str) in proto.iter().zip(args) {
+            let arg = match pr.r#type {
                 PluginDataType::Bool => SafeArg::Bool(Arg {
-                    b: Box::into_raw(Box::new(a.parse::<bool>().unwrap())),
+                    b: Box::into_raw(Box::new(arg_str.parse::<bool>()?)),
                 }),
                 PluginDataType::Int => SafeArg::Int(Arg {
-                    i: Box::into_raw(Box::new(a.parse::<i32>().unwrap())),
+                    i: Box::into_raw(Box::new(arg_str.parse::<i32>()?)),
                 }),
                 PluginDataType::Float => SafeArg::Float(Arg {
-                    f: Box::into_raw(Box::new(a.parse::<f32>().unwrap())),
+                    f: Box::into_raw(Box::new(arg_str.parse::<f32>()?)),
                 }),
                 PluginDataType::String => SafeArg::String(Arg {
-                    c: ManuallyDrop::new(CString::new(a.clone()).unwrap())
+                    c: ManuallyDrop::new(CString::new(arg_str.clone())?)
                         .as_ptr()
                         .cast::<c_char>(),
                 }),
                 PluginDataType::Enum => todo!(),
-            })
-            .collect()
+            };
+            parsed.push(arg);
+        }
+
+        Ok(parsed)
     }
 }
 
 unsafe impl Send for Plugin {}
 
 unsafe impl Sync for Plugin {}
+
+#[cfg(test)]
+mod tests {
+    use rustdeck_common::{
+        Args, actions, args, decl_action, decl_arg, decl_plugin, decl_variable, variables,
+    };
+
+    use super::*;
+
+    struct PluginState {
+        counter: i32,
+    }
+
+    fn init() -> PluginState {
+        PluginState { counter: 0 }
+    }
+
+    fn update(_: &PluginState) {}
+
+    fn get_variable(state: &PluginState, id: &str) -> String {
+        if id == "counter" {
+            state.counter.to_string()
+        } else {
+            unreachable!()
+        }
+    }
+
+    fn run_action(state: &mut PluginState, id: &str, args: &Args) {
+        match id {
+            "increment" => state.counter += 1,
+            "add" => {
+                let amt = args.get(0).int();
+                state.counter += amt;
+            }
+            "print" => {
+                let a = args.get(0);
+                let s = a.string();
+                println!("{s}");
+            }
+            _ => unreachable!(),
+        }
+    }
+
+    fn build() -> *const FFIPlugin {
+        decl_plugin! {
+            id: "test_plugin",
+            name: "Test Plugin",
+            desc: "Test Plugin",
+            variables: variables!(
+                decl_variable! {
+                    id: "counter",
+                    desc: "Counter",
+                    vtype: "int",
+                },
+            ),
+            actions: actions!(
+                decl_action! {
+                    id: "increment",
+                    name: "Increment",
+                    desc: "Increment",
+                },
+                decl_action! {
+                    id: "add",
+                    name: "Add",
+                    desc: "Add",
+                    args: args!(
+                        decl_arg! {
+                            name: "Amount",
+                            desc: "Amount",
+                            vtype: "int",
+                        },
+                    ),
+                },
+                decl_action! {
+                    id: "print",
+                    name: "Print",
+                    desc: "Print",
+                    args: args!(
+                        decl_arg! {
+                            name: "String",
+                            desc: "String",
+                            vtype: "string",
+                        },
+                    ),
+                }
+            ),
+            fn_init: init,
+            fn_update: update,
+            fn_get_variable: get_variable,
+            fn_run_action: run_action,
+        }
+    }
+
+    #[test]
+    fn test_plugin() {
+        let plugin = Plugin::try_from_ptr(build());
+        assert!(plugin.is_ok());
+        let plugin = plugin.unwrap();
+
+        assert_eq!(plugin.get_variable("counter"), "0");
+
+        assert!(plugin.run_action("increment".into(), &[]).is_ok());
+        assert_eq!(plugin.get_variable("counter"), "1");
+
+        assert!(plugin.run_action("add".into(), &["10".into()]).is_ok());
+        assert_eq!(plugin.get_variable("counter"), "11");
+
+        assert!(
+            plugin
+                .run_action("print".into(), &["Hello!".into()])
+                .is_ok()
+        );
+    }
+}

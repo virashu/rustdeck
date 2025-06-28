@@ -9,6 +9,8 @@ vars:
     rustdeck-media
     rustdeck-system
 
+  # rustdeck-obs # unstable
+
 tasks:
   mkdir:
     run: when_changed

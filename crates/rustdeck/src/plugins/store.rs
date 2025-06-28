@@ -6,6 +6,7 @@ use crate::{
         PluginActionArgsData, PluginActionsGroupedData, PluginActionsUngroupedData, PluginData,
         PluginVariablesGroupedData, PluginVariablesUngroupedData,
     },
+    plugins::error::ActionError,
 };
 
 use super::{Plugin, load_plugins_at};
@@ -65,34 +66,21 @@ impl PluginStore {
     }
 
     #[allow(clippy::significant_drop_tightening)]
-    pub fn try_run_action(&self, act: &RawDeckButtonAction) -> Result<(), String> {
+    pub fn try_run_action(&self, act: &RawDeckButtonAction) -> Result<(), ActionError> {
         let (plug_id, act_id) = act
             .id
             .split_once('.')
-            .ok_or_else(|| format!("Wrong action format: `{}`", act.id))?;
+            .ok_or_else(|| ActionError::InvalidFormat(act.id.clone()))?;
 
         {
             let plugin = self
                 .plugins
                 .get(plug_id)
-                .ok_or_else(|| format!("Cannot find plugin: `{plug_id}`"))?
+                .ok_or_else(|| ActionError::PluginNotFound(plug_id.into()))?
                 .read()
                 .unwrap();
 
-            if let Some(action_prototype) = plugin.actions.iter().find(|v| v.id == act_id) {
-                if action_prototype.args.len() != act.args.len() {
-                    return Err("Argument list length doesn't match".into());
-                }
-
-                plugin.run_action(
-                    act_id.to_string(),
-                    &Plugin::parse_args(&action_prototype.args, &act.args),
-                );
-            } else {
-                return Err(format!(
-                    "Plugin `{plug_id}` does not provide action `{act_id}`"
-                ));
-            }
+            plugin.run_action(act_id.to_string(), &act.args)?;
         }
 
         Ok(())

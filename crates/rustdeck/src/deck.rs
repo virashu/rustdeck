@@ -113,7 +113,10 @@ impl Deck {
 
         match action {
             Some(act) if act.id.starts_with(DECK_ACTION_PREFIX) => self.try_run_deck_action(&act),
-            Some(act) => self.plugin_store.try_run_action(&act),
+            Some(act) => self
+                .plugin_store
+                .try_run_action(&act)
+                .map_err(|e| e.to_string()),
             None => Ok(()),
         }
     }

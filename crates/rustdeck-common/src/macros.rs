@@ -5,6 +5,11 @@ macro_rules! export_plugin {
         unsafe extern "C" fn build() -> *const $crate::proto::Plugin {
             $in
         }
+
+        #[unsafe(no_mangle)]
+        unsafe extern "C" fn free(ptr: *mut ::std::ffi::c_char) {
+            _ = ::std::ffi::CString::from_raw(ptr);
+        }
     };
 }
 

@@ -1502,6 +1502,7 @@ dependencies = [
  "rustdeck-common",
  "serde",
  "serde_json",
+ "thiserror",
  "tokio",
  "tower-http",
  "tracing",
