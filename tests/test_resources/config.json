@@ -133,6 +133,17 @@
             "args": ["screen_2"]
           },
           "icon": null
+        },
+        {
+          "position": {
+            "y": 2,
+            "x": 1
+          },
+          "style": {
+            "text_align": "center",
+            "text_size": 24
+          },
+          "template": "{rustdeck_system.time}"
         }
       ]
     },
