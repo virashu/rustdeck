@@ -21,10 +21,13 @@ fn run_action(_: &(), id: &str, _: &Args) {
     }
 }
 
-fn get_time() -> u64 {
-    std::time::SystemTime::now()
+fn get_time() -> i64 {
+    #[allow(clippy::cast_possible_wrap)]
+    let timestamp = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
-        .map_or(0, |t| t.as_secs())
+        .map_or(0, |t| t.as_secs()) as i64;
+    let offset_in_sec: i64 = chrono::Local::now().offset().local_minus_utc().into();
+    timestamp + offset_in_sec
 }
 
 fn get_variable(_: &(), id: &str) -> String {
