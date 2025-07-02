@@ -22,10 +22,12 @@ pub struct Args {
 }
 
 impl Args {
+    #[must_use]
     pub fn from(arg_ptr: *const Arg) -> Self {
         Self { inner: arg_ptr }
     }
 
+    #[must_use]
     pub fn get(&self, n: isize) -> ArgsInst {
         ArgsInst::from(unsafe { self.inner.offset(n) })
     }

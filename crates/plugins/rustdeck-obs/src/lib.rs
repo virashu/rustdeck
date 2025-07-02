@@ -23,18 +23,42 @@ fn init() -> PluginState {
 fn update(_: &PluginState) {}
 
 fn get_variable(state: &PluginState, id: &str) -> String {
-    if id == "scene" {
-        state
+    match id {
+        "scene" => {
+            state
+                .rt
+                .block_on(state.client.scenes().current_program_scene())
+                .unwrap()
+                .id
+                .name
+        }
+        "profile" => state
             .rt
-            .block_on(state.client.scenes().current_program_scene())
+            .block_on(state.client.profiles().current())
+            .unwrap(),
+        "is_streaming" => state
+            .rt
+            .block_on(state.client.streaming().status())
             .unwrap()
-            .id
-            .name
-    } else {
-        unreachable!()
+            .active
+            .to_string(),
+        "streaming_state" => {
+            if state
+                .rt
+                .block_on(state.client.streaming().status())
+                .unwrap()
+                .active
+            {
+                "online".into()
+            } else {
+                "offline".into()
+            }
+        }
+        _ => unreachable!(),
     }
 }
 
+#[allow(clippy::too_many_lines)]
 fn run_action(state: &PluginState, id: &str, args: &Args) {
     match id {
         "set_filter" => {
@@ -59,13 +83,85 @@ fn run_action(state: &PluginState, id: &str, args: &Args) {
                     .await;
             });
         }
-        "switch_scene" => {
+        "set_scene" => {
             state.rt.block_on(async {
                 _ = state
                     .client
                     .scenes()
                     .set_current_program_scene(args.get(0).string())
                     .await;
+            });
+        }
+        "set_streaming" => {
+            state.rt.block_on(async {
+                match args.get(0).string() {
+                    "toggle" => {
+                        _ = state.client.streaming().toggle().await;
+                    }
+                    "start" => {
+                        _ = state.client.streaming().start().await;
+                    }
+                    "stop" => {
+                        _ = state.client.streaming().stop().await;
+                    }
+                    _ => unreachable!(),
+                }
+            });
+        }
+        "set_recording" => {
+            state.rt.block_on(async {
+                match args.get(0).string() {
+                    "toggle" => {
+                        _ = state.client.recording().toggle().await;
+                    }
+                    "start" => {
+                        _ = state.client.recording().start().await;
+                    }
+                    "stop" => {
+                        _ = state.client.recording().stop().await;
+                    }
+                    _ => unreachable!(),
+                }
+            });
+        }
+        "set_virtual_cam" => {
+            state.rt.block_on(async {
+                match args.get(0).string() {
+                    "toggle" => {
+                        _ = state.client.virtual_cam().toggle().await;
+                    }
+                    "start" => {
+                        _ = state.client.virtual_cam().start().await;
+                    }
+                    "stop" => {
+                        _ = state.client.virtual_cam().stop().await;
+                    }
+                    _ => unreachable!(),
+                }
+            });
+        }
+        "set_mute" => {
+            state.rt.block_on(async {
+                let input = args.get(0).string().to_owned();
+                let input_state = args.get(1).string().to_owned();
+
+                match args.get(1).string() {
+                    "toggle" => {
+                        _ = state
+                            .client
+                            .inputs()
+                            .toggle_mute(input.as_str().into())
+                            .await;
+                    }
+                    "mute" | "unmute" => {
+                        _ = state
+                            .client
+                            .inputs()
+                            .set_muted(input.as_str().into(), input_state == "mute")
+                            .await;
+                    }
+                    _ => unreachable!(),
+                }
             });
         }
         _ => unreachable!(),
@@ -101,8 +197,11 @@ fn get_enum(state: &PluginState, id: &str) -> String {
             state.client.filters();
             String::new()
         }),
-        "set_filter.action" => String::from("on\noff\ntoggle"),
-        "switch_scene.scene" => state.rt.block_on(async {
+        "set_filter.state" => String::from("on\noff\ntoggle"),
+        "set_streaming.state" | "set_recording.state" | "set_virtual_cam.state" => {
+            String::from("start\nstop\ntoggle")
+        }
+        "set_scene.scene" => state.rt.block_on(async {
             state
                 .client
                 .scenes()
@@ -116,6 +215,29 @@ fn get_enum(state: &PluginState, id: &str) -> String {
                 .collect::<Vec<String>>()
                 .join("\n")
         }),
+        "set_profile.profile" => state.rt.block_on(async {
+            state
+                .client
+                .profiles()
+                .list()
+                .await
+                .unwrap()
+                .profiles
+                .join("\n")
+        }),
+        "set_mute.source" => state.rt.block_on(async {
+            state
+                .client
+                .inputs()
+                .list(None)
+                .await
+                .unwrap()
+                .iter()
+                .map(|i| i.id.name.clone())
+                .collect::<Vec<String>>()
+                .join("\n")
+        }),
+        "set_mute.state" => String::from("mute\nunmute\ntoggle"),
         _ => unreachable!(),
     }
 }
@@ -130,6 +252,21 @@ export_plugin! {
             decl_variable! {
                 id: "scene",
                 desc: "Scene",
+                vtype: "string",
+            },
+            decl_variable! {
+                id: "profile",
+                desc: "Profile",
+                vtype: "string",
+            },
+            decl_variable! {
+                id: "is_streaming",
+                desc: "Boolean streaming state",
+                vtype: "bool",
+            },
+            decl_variable! {
+                id: "streaming_state",
+                desc: "Streaming state string",
                 vtype: "string",
             },
         ),
@@ -153,7 +290,7 @@ export_plugin! {
                         vtype: "string",
                     },
                     decl_arg! {
-                        id: "action",
+                        id: "state",
                         name: "State",
                         desc: "",
                         vtype: "enum",
@@ -161,14 +298,85 @@ export_plugin! {
                 ),
             },
             decl_action! {
-                id: "switch_scene",
-                name: "Switch scene",
-                desc: "",
+                id: "set_scene",
+                name: "Set scene",
+                desc: "Sets scene for program",
                 args: args!(
                     decl_arg! {
                         id: "scene",
                         name: "To",
                         desc: "Destination scene",
+                        vtype: "enum",
+                    },
+                ),
+            },
+            decl_action! {
+                id: "set_streaming",
+                name: "Set streaming state",
+                desc: "",
+                args: args!(
+                    decl_arg! {
+                        id: "state",
+                        name: "State",
+                        desc: "",
+                        vtype: "enum",
+                    },
+                ),
+            },
+            decl_action! {
+                id: "set_recording",
+                name: "Set recording state",
+                desc: "",
+                args: args!(
+                    decl_arg! {
+                        id: "state",
+                        name: "State",
+                        desc: "",
+                        vtype: "enum",
+                    },
+                ),
+            },
+            decl_action! {
+                id: "set_virtual_cam",
+                name: "Set virtual camera state",
+                desc: "",
+                args: args!(
+                    decl_arg! {
+                        id: "state",
+                        name: "State",
+                        desc: "",
+                        vtype: "enum",
+                    },
+                ),
+            },
+            decl_action! {
+                id: "set_profile",
+                name: "Set profile",
+                desc: "Changes current active profile",
+                args: args! (
+                    decl_arg! {
+                        id: "profile",
+                        name: "Profile",
+                        desc: "",
+                        vtype: "enum",
+                    },
+                ),
+            },
+            decl_action! {
+                id: "set_mute",
+                name: "Set mute",
+                desc: "Mute and unmute audio sources",
+                args: args!(
+                    decl_arg! {
+                        id: "source",
+                        name: "Source",
+                        desc: "",
+                        vtype: "enum",
+                    },
+                    decl_arg! {
+                        id: "state",
+                        name: "State",
+                        desc: "",
                         vtype: "enum",
                     },
                 ),

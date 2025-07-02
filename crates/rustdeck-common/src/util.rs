@@ -7,6 +7,7 @@ use std::{
 /// Panics because of UTF8 error.
 /// # Safety
 /// The pointer should be non-null. Use `try_ptr_to_str` for additional check.
+#[must_use]
 pub unsafe fn ptr_to_str<'a>(ptr: *const c_char) -> &'a str {
     unsafe { CStr::from_ptr(ptr).to_str().unwrap() }
 }
