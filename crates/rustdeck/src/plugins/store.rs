@@ -53,7 +53,7 @@ impl PluginStore {
             ));
         }
 
-        Ok(plugin.get_variable(i).unwrap())
+        plugin.get_variable(i)
     }
 
     pub fn render_variable<S>(&self, id: S) -> String

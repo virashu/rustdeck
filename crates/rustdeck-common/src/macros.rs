@@ -34,8 +34,7 @@ macro_rules! decl_plugin {
     ) => {
         unsafe {
             unsafe extern "C" fn fn_init() -> $crate::proto::Result {
-                let mut user_state_res = ($user_fn_init)();
-                match user_state_res {
+                match ($user_fn_init)() {
                     Ok(state) => {
                         let raw_state = ::std::boxed::Box::into_raw(::std::boxed::Box::new(state));
                         $crate::proto::Result {
@@ -325,12 +324,14 @@ macro_rules! decl_action {
         args: $args:expr
         $(,)?
     ) => {
-        ::std::boxed::Box::into_raw(::std::boxed::Box::new($crate::proto::Action {
-            id: $crate::util::str_to_ptr($id),
-            name: $crate::util::str_to_ptr($name),
-            desc: $crate::util::str_to_ptr($desc),
-            args: $args,
-        })) as *const $crate::proto::Action
+        unsafe {
+            ::std::boxed::Box::into_raw(::std::boxed::Box::new($crate::proto::Action {
+                id: $crate::util::str_to_ptr($id),
+                name: $crate::util::str_to_ptr($name),
+                desc: $crate::util::str_to_ptr($desc),
+                args: $args,
+            })) as *const $crate::proto::Action
+        }
     };
 
     (
@@ -371,13 +372,15 @@ macro_rules! decl_arg {
         vtype: $vtype:literal
         $(,)?
     ) => {
-        ::std::boxed::Box::into_raw(::std::boxed::Box::new($crate::proto::ActionArg {
-            id: $crate::util::str_to_ptr($id),
-            name: $crate::util::str_to_ptr($name),
-            desc: $crate::util::str_to_ptr($desc),
-            r#type: $crate::Type::try_from($vtype)
-                .expect("Incorrect variable type")
-                .into(),
-        })) as *const $crate::proto::ActionArg
+        unsafe {
+            ::std::boxed::Box::into_raw(::std::boxed::Box::new($crate::proto::ActionArg {
+                id: $crate::util::str_to_ptr($id),
+                name: $crate::util::str_to_ptr($name),
+                desc: $crate::util::str_to_ptr($desc),
+                r#type: $crate::Type::try_from($vtype)
+                    .expect("Incorrect variable type")
+                    .into(),
+            })) as *const $crate::proto::ActionArg
+        }
     };
 }

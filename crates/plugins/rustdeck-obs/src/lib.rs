@@ -1,4 +1,5 @@
 #![allow(clippy::unnecessary_wraps)]
+#![allow(unsafe_op_in_unsafe_fn)]
 
 use rustdeck_common::{
     Args, actions, args, decl_action, decl_arg, decl_plugin, decl_variable, export_plugin,
@@ -72,6 +73,45 @@ fn run_action(state: &PluginState, id: &str, args: &Args) {
                     .await;
             });
         }
+        "set_source_visibility" => state.rt.block_on(async {
+            let scene = args.get(0).string().to_owned();
+            let source = args.get(1).string().to_owned();
+            let source_state = args.get(2).string().to_owned();
+
+            let item_id = state
+                .client
+                .scene_items()
+                .id(obws::requests::scene_items::Id {
+                    scene: scene.as_str().into(),
+                    source: source.as_str(),
+                    ..Default::default()
+                })
+                .await
+                .unwrap();
+
+            let enabled = match source_state.as_str() {
+                "show" => true,
+                "hide" => false,
+                "toggle" => !state
+                    .client
+                    .scene_items()
+                    .enabled(scene.as_str().into(), item_id)
+                    .await
+                    .unwrap(),
+                _ => unreachable!(),
+            };
+
+            let res = state
+                .client
+                .scene_items()
+                .set_enabled(obws::requests::scene_items::SetEnabled {
+                    scene: scene.as_str().into(),
+                    item_id,
+                    enabled,
+                })
+                .await;
+            println!("{res:#?}");
+        }),
         "set_scene" => {
             state.rt.block_on(async {
                 _ = state
@@ -190,7 +230,7 @@ fn get_enum(state: &PluginState, id: &str) -> String {
         "set_streaming.state" | "set_recording.state" | "set_virtual_cam.state" => {
             String::from("start\nstop\ntoggle")
         }
-        "set_scene.scene" => state.rt.block_on(async {
+        "set_scene.scene" | "set_source_visibility.scene" => state.rt.block_on(async {
             state
                 .client
                 .scenes()
@@ -227,6 +267,7 @@ fn get_enum(state: &PluginState, id: &str) -> String {
                 .join("\n")
         }),
         "set_mute.state" => String::from("mute\nunmute\ntoggle"),
+        "set_source_visibility.state" => String::from("show\nhide\ntoggle"),
         _ => unreachable!(),
     }
 }
@@ -276,6 +317,31 @@ export_plugin! {
                         id: "filter",
                         name: "Filter",
                         desc: "The name of the filter",
+                        vtype: "string",
+                    },
+                    decl_arg! {
+                        id: "state",
+                        name: "State",
+                        desc: "",
+                        vtype: "enum",
+                    },
+                ),
+            },
+            decl_action! {
+                id: "set_source_visibility",
+                name: "Set source visibility",
+                desc: "",
+                args: args!(
+                    decl_arg! {
+                        id: "scene",
+                        name: "Scene",
+                        desc: "",
+                        vtype: "enum",
+                    },
+                    decl_arg! {
+                        id: "source",
+                        name: "Source",
+                        desc: "",
                         vtype: "string",
                     },
                     decl_arg! {
