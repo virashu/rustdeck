@@ -1,5 +1,6 @@
 #![allow(clippy::trivially_copy_pass_by_ref, reason = "unit used as state")]
 #![allow(clippy::unnecessary_wraps)]
+#![allow(unsafe_op_in_unsafe_fn)]
 
 use rustdeck_common::{
     Args, actions, decl_action, decl_plugin, decl_variable, export_plugin, variables,
@@ -12,16 +13,18 @@ const fn init() -> Result<(), Box<dyn std::error::Error>> {
 
 const fn update(_: &()) {}
 
-fn run_action(_: &(), id: &str, _: &Args) {
+fn run_action(_: &(), id: &str, _: &Args) -> Result<(), Box<dyn std::error::Error>> {
     match id {
         "shutdown" => {
-            _ = shutdown();
+            shutdown()?;
         }
         "reboot" => {
-            _ = reboot();
+            reboot()?;
         }
         _ => unreachable!(),
     }
+
+    Ok(())
 }
 
 fn get_time() -> i64 {

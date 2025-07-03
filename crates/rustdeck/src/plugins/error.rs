@@ -86,4 +86,6 @@ pub enum ActionError {
     ActionNotFound { action: String, plugin: String },
     #[error("Arguments for action `{0}` did not pass validation")]
     InvalidArgs(String),
+    #[error("Plugin returned an error: {0}")]
+    PluginError(String),
 }

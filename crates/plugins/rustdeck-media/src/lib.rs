@@ -1,4 +1,5 @@
 #![allow(clippy::unnecessary_wraps)]
+#![allow(unsafe_op_in_unsafe_fn)]
 
 use media_session::{MediaSession, traits::MediaSessionControls};
 use rustdeck_common::{
@@ -17,16 +18,18 @@ fn init() -> Result<PluginState, Box<dyn std::error::Error>> {
 
 fn update(_: &mut PluginState) {}
 
-fn run_action(state: &PluginState, id: &str, _: &Args) {
-    _ = match id {
-        "play_pause" => state.player.toggle_pause(),
-        "play" => state.player.play(),
-        "pause" => state.player.pause(),
-        "stop" => state.player.stop(),
-        "next" => state.player.next(),
-        "previous" => state.player.prev(),
+fn run_action(state: &PluginState, id: &str, _: &Args) -> Result<(), Box<dyn std::error::Error>> {
+    match id {
+        "play_pause" => state.player.toggle_pause()?,
+        "play" => state.player.play()?,
+        "pause" => state.player.pause()?,
+        "stop" => state.player.stop()?,
+        "next" => state.player.next()?,
+        "previous" => state.player.prev()?,
         _ => unreachable!(),
-    };
+    }
+
+    Ok(())
 }
 
 fn get_variable(_: &PluginState, id: &str) -> Result<String, String> {

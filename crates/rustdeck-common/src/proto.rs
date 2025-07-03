@@ -51,7 +51,7 @@ pub struct Plugin {
     pub fn_update: unsafe extern "C" fn(state: *mut c_void),
     pub fn_get_variable: unsafe extern "C" fn(state: *mut c_void, id: *const c_char) -> Result,
     pub fn_run_action:
-        unsafe extern "C" fn(state: *mut c_void, id: *const c_char, args: *const Arg),
+        unsafe extern "C" fn(state: *mut c_void, id: *const c_char, args: *const Arg) -> Result,
 
     pub fn_get_enum:
         *const unsafe extern "C" fn(state: *mut c_void, id: *const c_char) -> *mut c_char,

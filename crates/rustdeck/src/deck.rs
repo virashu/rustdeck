@@ -117,7 +117,8 @@ impl Deck {
             Some(act) => self
                 .plugin_store
                 .try_run_action(&act)
-                .map_err(|e| e.to_string()),
+                .map_err(|e| e.to_string())
+                .inspect_err(|e| tracing::warn!("Error while handling button click: {e}")),
             None => Ok(()),
         }
     }

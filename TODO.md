@@ -7,5 +7,4 @@
 - Plugins
   - Plugin config
   - Plugin pre-init (after install) config
-  - Plugins' error handling
   - Dynamic icons (updated by plugins; for example, cover of now playing media)

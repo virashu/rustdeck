@@ -49,152 +49,135 @@ fn get_variable(state: &PluginState, id: &str) -> Result<String, Box<dyn std::er
 }
 
 #[allow(clippy::too_many_lines)]
-fn run_action(state: &PluginState, id: &str, args: &Args) {
+fn run_action(
+    state: &PluginState,
+    id: &str,
+    args: &Args,
+) -> Result<(), Box<dyn std::error::Error>> {
     match id {
         "set_filter" => {
-            state.rt.block_on(async {
-                let source_string = args.get(0).string().to_owned();
-                let source = source_string.as_str().into();
-                let filter = args.get(1).string().to_owned();
+            let source_string = args.get(0).string().to_owned();
+            let source = source_string.as_str().into();
+            let filter = args.get(1).string().to_owned();
 
-                let filters = state.client.filters();
-                let enabled = match args.get(2).string() {
-                    "on" => true,
-                    "off" => false,
-                    "toggle" => !filters.get(source, &filter).await.unwrap().enabled,
-                    _ => unreachable!(),
-                };
-                _ = filters
-                    .set_enabled(obws::requests::filters::SetEnabled {
-                        source,
-                        filter: &filter,
-                        enabled,
-                    })
-                    .await;
-            });
+            let filters = state.client.filters();
+            let enabled = match args.get(2).string() {
+                "on" => true,
+                "off" => false,
+                "toggle" => !state.rt.block_on(filters.get(source, &filter))?.enabled,
+                _ => unreachable!(),
+            };
+
+            state
+                .rt
+                .block_on(filters.set_enabled(obws::requests::filters::SetEnabled {
+                    source,
+                    filter: &filter,
+                    enabled,
+                }))?;
         }
-        "set_source_visibility" => state.rt.block_on(async {
+        "set_source_visibility" => {
             let scene = args.get(0).string().to_owned();
             let source = args.get(1).string().to_owned();
             let source_state = args.get(2).string().to_owned();
 
-            let item_id = state
-                .client
-                .scene_items()
-                .id(obws::requests::scene_items::Id {
+            let item_id = state.rt.block_on(state.client.scene_items().id(
+                obws::requests::scene_items::Id {
                     scene: scene.as_str().into(),
                     source: source.as_str(),
                     ..Default::default()
-                })
-                .await
-                .unwrap();
+                },
+            ))?;
 
             let enabled = match source_state.as_str() {
                 "show" => true,
                 "hide" => false,
-                "toggle" => !state
-                    .client
-                    .scene_items()
-                    .enabled(scene.as_str().into(), item_id)
-                    .await
-                    .unwrap(),
+                "toggle" => !state.rt.block_on(
+                    state
+                        .client
+                        .scene_items()
+                        .enabled(scene.as_str().into(), item_id),
+                )?,
                 _ => unreachable!(),
             };
 
-            let res = state
-                .client
-                .scene_items()
-                .set_enabled(obws::requests::scene_items::SetEnabled {
+            state.rt.block_on(state.client.scene_items().set_enabled(
+                obws::requests::scene_items::SetEnabled {
                     scene: scene.as_str().into(),
                     item_id,
                     enabled,
-                })
-                .await;
-            println!("{res:#?}");
-        }),
+                },
+            ))?;
+        }
         "set_scene" => {
-            state.rt.block_on(async {
-                _ = state
+            state.rt.block_on(
+                state
                     .client
                     .scenes()
-                    .set_current_program_scene(args.get(0).string())
-                    .await;
-            });
+                    .set_current_program_scene(args.get(0).string()),
+            )?;
         }
-        "set_streaming" => {
-            state.rt.block_on(async {
-                match args.get(0).string() {
-                    "toggle" => {
-                        _ = state.client.streaming().toggle().await;
-                    }
-                    "start" => {
-                        _ = state.client.streaming().start().await;
-                    }
-                    "stop" => {
-                        _ = state.client.streaming().stop().await;
-                    }
-                    _ => unreachable!(),
-                }
-            });
-        }
-        "set_recording" => {
-            state.rt.block_on(async {
-                match args.get(0).string() {
-                    "toggle" => {
-                        _ = state.client.recording().toggle().await;
-                    }
-                    "start" => {
-                        _ = state.client.recording().start().await;
-                    }
-                    "stop" => {
-                        _ = state.client.recording().stop().await;
-                    }
-                    _ => unreachable!(),
-                }
-            });
-        }
-        "set_virtual_cam" => {
-            state.rt.block_on(async {
-                match args.get(0).string() {
-                    "toggle" => {
-                        _ = state.client.virtual_cam().toggle().await;
-                    }
-                    "start" => {
-                        _ = state.client.virtual_cam().start().await;
-                    }
-                    "stop" => {
-                        _ = state.client.virtual_cam().stop().await;
-                    }
-                    _ => unreachable!(),
-                }
-            });
-        }
+        "set_streaming" => match args.get(0).string() {
+            "toggle" => {
+                state.rt.block_on(state.client.streaming().toggle())?;
+            }
+            "start" => {
+                state.rt.block_on(state.client.streaming().start())?;
+            }
+            "stop" => {
+                state.rt.block_on(state.client.streaming().stop())?;
+            }
+            _ => unreachable!(),
+        },
+        "set_recording" => match args.get(0).string() {
+            "toggle" => {
+                state.rt.block_on(state.client.recording().toggle())?;
+            }
+            "start" => {
+                state.rt.block_on(state.client.recording().start())?;
+            }
+            "stop" => {
+                state.rt.block_on(state.client.recording().stop())?;
+            }
+            _ => unreachable!(),
+        },
+        "set_virtual_cam" => match args.get(0).string() {
+            "toggle" => {
+                state.rt.block_on(state.client.virtual_cam().toggle())?;
+            }
+            "start" => {
+                state.rt.block_on(state.client.virtual_cam().start())?;
+            }
+            "stop" => {
+                state.rt.block_on(state.client.virtual_cam().stop())?;
+            }
+            _ => unreachable!(),
+        },
         "set_mute" => {
-            state.rt.block_on(async {
-                let input = args.get(0).string().to_owned();
-                let input_state = args.get(1).string().to_owned();
+            let input = args.get(0).string().to_owned();
+            let input_state = args.get(1).string().to_owned();
 
-                match args.get(1).string() {
-                    "toggle" => {
-                        _ = state
-                            .client
-                            .inputs()
-                            .toggle_mute(input.as_str().into())
-                            .await;
-                    }
-                    "mute" | "unmute" => {
-                        _ = state
-                            .client
-                            .inputs()
-                            .set_muted(input.as_str().into(), input_state == "mute")
-                            .await;
-                    }
-                    _ => unreachable!(),
+            match args.get(1).string() {
+                "toggle" => {
+                    state
+                        .rt
+                        .block_on(state.client.inputs().toggle_mute(input.as_str().into()))?;
                 }
-            });
+                "mute" | "unmute" => {
+                    state.rt.block_on(
+                        state
+                            .client
+                            .inputs()
+                            .set_muted(input.as_str().into(), input_state == "mute"),
+                    )?;
+                }
+                _ => unreachable!(),
+            }
         }
         _ => unreachable!(),
     }
+
+    Ok(())
 }
 
 fn get_enum(state: &PluginState, id: &str) -> String {

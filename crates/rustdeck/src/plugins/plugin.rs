@@ -214,7 +214,7 @@ impl Plugin {
             .map_err(|_| ActionError::InvalidArgs(act_id.clone()))?;
 
         unsafe {
-            (self.inner.fn_run_action)(
+            let res = (self.inner.fn_run_action)(
                 self.state,
                 CString::new(act_id).unwrap().as_ptr().cast::<c_char>(),
                 safe_args
@@ -223,6 +223,15 @@ impl Plugin {
                     .collect::<Vec<Arg>>()
                     .as_ptr(),
             );
+
+            if res.status != 0 {
+                let error_value = util::try_ptr_to_str(res.content.cast()).map_or_else(
+                    |_| String::from("<no error description>"),
+                    ToOwned::to_owned,
+                );
+
+                return Err(ActionError::PluginError(error_value));
+            }
         }
 
         Ok(())
@@ -244,7 +253,7 @@ impl Plugin {
                 Ok(value)
             } else {
                 try_ptr_to_str(res.content.cast()).map_or_else(
-                    |_| Err(String::new()),
+                    |_| Err(String::from("<no error description>")),
                     |error| {
                         let error = error.to_owned();
                         self.free(res.content.cast());
@@ -343,7 +352,12 @@ mod tests {
         }
     }
 
-    fn run_action(state: &mut PluginState, id: &str, args: &Args) {
+    #[allow(clippy::unnecessary_wraps)]
+    fn run_action(
+        state: &mut PluginState,
+        id: &str,
+        args: &Args,
+    ) -> Result<(), Box<dyn std::error::Error>> {
         match id {
             "increment" => state.counter += 1,
             "add" => {
@@ -357,8 +371,11 @@ mod tests {
             }
             _ => unreachable!(),
         }
+
+        Ok(())
     }
 
+    #[allow(unsafe_op_in_unsafe_fn)]
     fn build() -> *const FFIPlugin {
         decl_plugin! {
             id: "test_plugin",

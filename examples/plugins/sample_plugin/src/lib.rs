@@ -1,4 +1,5 @@
 #![allow(clippy::unnecessary_wraps)]
+#![allow(unsafe_op_in_unsafe_fn)]
 
 use rustdeck_common::{
     Args, actions, args, decl_action, decl_arg, decl_plugin, decl_variable, export_plugin,
@@ -23,7 +24,11 @@ fn get_variable(state: &PluginState, id: &str) -> Result<String, String> {
     })
 }
 
-fn run_action(state: &mut PluginState, id: &str, args: &Args) {
+fn run_action(
+    state: &mut PluginState,
+    id: &str,
+    args: &Args,
+) -> Result<(), Box<dyn std::error::Error>> {
     match id {
         "add" => {
             let amt = args.get(0).int();
@@ -37,6 +42,8 @@ fn run_action(state: &mut PluginState, id: &str, args: &Args) {
         }
         _ => unreachable!(),
     }
+
+    Ok(())
 }
 
 export_plugin! {

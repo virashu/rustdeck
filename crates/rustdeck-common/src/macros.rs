@@ -81,11 +81,23 @@ macro_rules! decl_plugin {
                 state: *mut ::std::ffi::c_void,
                 id: *const ::std::ffi::c_char,
                 args: *const $crate::proto::Arg,
-            ) {
+            ) -> $crate::proto::Result {
                 let user_state = unsafe { &mut *state.cast() };
                 let id = unsafe { ::std::ffi::CStr::from_ptr(id).to_str().unwrap() };
                 let args = $crate::Args::from(args);
-                ($user_fn_run_action)(user_state, id, &args);
+                match ($user_fn_run_action)(user_state, id, &args) {
+                    Ok(_) => $crate::proto::Result {
+                        status: 0,
+                        content: ::std::ptr::null_mut(),
+                    },
+                    Err(e) => $crate::proto::Result {
+                        status: 1,
+                        content: ::std::ffi::CString::new(e.to_string())
+                            .unwrap()
+                            .into_raw()
+                            .cast(),
+                    },
+                }
             }
 
             ::std::boxed::Box::into_raw(::std::boxed::Box::new($crate::proto::Plugin {
