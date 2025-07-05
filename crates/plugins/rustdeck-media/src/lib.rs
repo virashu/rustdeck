@@ -3,7 +3,10 @@
 
 use media_session::{MediaSession, traits::MediaSessionControls};
 use rustdeck_common::{
-    Args, actions, decl_action, decl_plugin, decl_variable, export_plugin, variables,
+    Args, Type,
+    builder::{Action, PluginBuilder, Variable},
+    decorate_fn_get_variable, decorate_fn_init, decorate_fn_run_action, decorate_fn_update,
+    export_plugin,
 };
 
 struct PluginState {
@@ -50,63 +53,28 @@ fn get_variable(_: &PluginState, id: &str) -> Result<String, String> {
 }
 
 export_plugin! {
-    decl_plugin! {
-        id: "rustdeck_media",
-        name: "RustDeck Media",
-        desc: "A plugin for media management (music, video, etc.)",
-        variables: variables!(
-            decl_variable! {
-                id: "title",
-                desc: "Title",
-                vtype: "string",
-            },
-            decl_variable! {
-                id: "artist",
-                desc: "Artist",
-                vtype: "string",
-            },
-            decl_variable! {
-                id: "state",
-                desc: "State",
-                vtype: "string",
-            },
-        ),
-        actions: actions!(
-            decl_action! {
-                id: "play_pause",
-                name: "Pause toggle",
-                desc: "Toggle play/pause"
-            },
-            decl_action! {
-                id: "play",
-                name: "Play",
-                desc: "Play media"
-            },
-            decl_action! {
-                id: "pause",
-                name: "Pause",
-                desc: "Pause media"
-            },
-            decl_action! {
-                id: "stop",
-                name: "Stop",
-                desc: "Stop playback"
-            },
-            decl_action! {
-                id: "previous",
-                name: "Previous",
-                desc: "Previous track"
-            },
-            decl_action! {
-                id: "next",
-                name: "Next",
-                desc: "Next track"
-            },
-        ),
-
-        fn_init: init,
-        fn_update: update,
-        fn_get_variable: get_variable,
-        fn_run_action: run_action,
-    }
+    PluginBuilder::new(
+        "rustdeck_media",
+        "Rustdeck Media",
+        "A plugin for media management (music, video, etc.)",
+    )
+        .init(decorate_fn_init!(init))
+        .update(decorate_fn_update!(update))
+        .get_variable(decorate_fn_get_variable!(get_variable))
+        .run_action(decorate_fn_run_action!(run_action))
+        .variable(Variable::new("title", "Title", Type::String))
+        .variable(Variable::new("artist", "Artist", Type::String))
+        .variable(Variable::new("state", "State", Type::String))
+        .action(Action::new(
+            "play_pause",
+            "Pause toggle",
+            "Toggle play/pause",
+        ))
+        .action(Action::new("play", "Play", "Play media"))
+        .action(Action::new("pause", "Pause", "Pause media"))
+        .action(Action::new("stop", "Stop", "Stop playback"))
+        .action(Action::new("previous", "Previous", "Previous track"))
+        .action(Action::new("next", "Next", "Next track"))
+        .build()
+        .unwrap()
 }

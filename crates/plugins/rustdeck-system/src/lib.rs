@@ -3,7 +3,10 @@
 #![allow(unsafe_op_in_unsafe_fn)]
 
 use rustdeck_common::{
-    Args, actions, decl_action, decl_plugin, decl_variable, export_plugin, variables,
+    Args, Type,
+    builder::{Action, PluginBuilder, Variable},
+    decorate_fn_get_variable, decorate_fn_init, decorate_fn_run_action, decorate_fn_update,
+    export_plugin,
 };
 use system_shutdown::{reboot, shutdown};
 
@@ -51,43 +54,20 @@ fn get_variable(_: &(), id: &str) -> Result<String, String> {
 }
 
 export_plugin! {
-    decl_plugin! {
-        id: "rustdeck_system",
-        name: "RustDeck System",
-        desc: "System management plugin",
-        variables: variables!(
-            decl_variable! {
-                id: "time",
-                desc: "System time (hh:mm)",
-                vtype: "string"
-            },
-            decl_variable! {
-                id: "time_hours",
-                desc: "System time (hh)",
-                vtype: "string"
-            },
-            decl_variable! {
-                id: "time_minutes",
-                desc: "System time (mm)",
-                vtype: "string"
-            },
-        ),
-        actions: actions!(
-            decl_action! {
-                id: "shutdown",
-                name: "Shutdown",
-                desc: "Shutdown the system"
-            },
-            decl_action! {
-                id: "reboot",
-                name: "Reboot",
-                desc: "Reboot the system"
-            },
-        ),
-
-        fn_init: init,
-        fn_update: update,
-        fn_get_variable: get_variable,
-        fn_run_action: run_action,
-    }
+    PluginBuilder::new(
+        "rustdeck_system",
+        "RustDeck System",
+        "System management plugin",
+    )
+        .init(decorate_fn_init!(init))
+        .update(decorate_fn_update!(update))
+        .get_variable(decorate_fn_get_variable!(get_variable))
+        .run_action(decorate_fn_run_action!(run_action))
+        .variable(Variable::new("time", "System time (hh:mm)", Type::String))
+        .variable(Variable::new("time_hours", "System time (hh)", Type::String))
+        .variable(Variable::new("time_minutes", "System time (mm)", Type::String))
+        .action(Action::new("shutdown", "Shutdown", "Shutdown the system"))
+        .action(Action::new("reboot", "Reboot", "Reboot the system"))
+        .build()
+        .unwrap()
 }

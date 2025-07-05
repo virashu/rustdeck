@@ -2,8 +2,10 @@
 #![allow(unsafe_op_in_unsafe_fn)]
 
 use rustdeck_common::{
-    Args, actions, args, decl_action, decl_arg, decl_plugin, decl_variable, export_plugin,
-    variables,
+    Args, Type,
+    builder::{Action, PluginBuilder, Variable},
+    decorate_fn_get_enum, decorate_fn_get_variable, decorate_fn_init, decorate_fn_run_action,
+    decorate_fn_update, export_plugin,
 };
 
 struct PluginState {
@@ -239,176 +241,55 @@ fn get_enum(state: &PluginState, id: &str) -> Result<String, Box<dyn std::error:
 }
 
 export_plugin! {
-    decl_plugin! {
-        id: "rustdeck_obs",
-        name: "RustDeck OBS",
-        desc: "A plugin to manage OBS through websocket",
-
-        variables: variables!(
-            decl_variable! {
-                id: "scene",
-                desc: "Scene",
-                vtype: "string",
-            },
-            decl_variable! {
-                id: "profile",
-                desc: "Profile",
-                vtype: "string",
-            },
-            decl_variable! {
-                id: "is_streaming",
-                desc: "Boolean streaming state",
-                vtype: "bool",
-            },
-            decl_variable! {
-                id: "streaming_state",
-                desc: "Streaming state string",
-                vtype: "string",
-            },
-        ),
-
-        actions: actions!(
-            decl_action! {
-                id: "set_filter",
-                name: "Set filter state",
-                desc: "",
-                args: args!(
-                    decl_arg! {
-                        id: "source",
-                        name: "Source",
-                        desc: "The name of the source",
-                        vtype: "enum",
-                    },
-                    decl_arg! {
-                        id: "filter",
-                        name: "Filter",
-                        desc: "The name of the filter",
-                        vtype: "string",
-                    },
-                    decl_arg! {
-                        id: "state",
-                        name: "State",
-                        desc: "",
-                        vtype: "enum",
-                    },
-                ),
-            },
-            decl_action! {
-                id: "set_source_visibility",
-                name: "Set source visibility",
-                desc: "",
-                args: args!(
-                    decl_arg! {
-                        id: "scene",
-                        name: "Scene",
-                        desc: "",
-                        vtype: "enum",
-                    },
-                    decl_arg! {
-                        id: "source",
-                        name: "Source",
-                        desc: "",
-                        vtype: "string",
-                    },
-                    decl_arg! {
-                        id: "state",
-                        name: "State",
-                        desc: "",
-                        vtype: "enum",
-                    },
-                ),
-            },
-            decl_action! {
-                id: "set_scene",
-                name: "Set scene",
-                desc: "Sets scene for program",
-                args: args!(
-                    decl_arg! {
-                        id: "scene",
-                        name: "To",
-                        desc: "Destination scene",
-                        vtype: "enum",
-                    },
-                ),
-            },
-            decl_action! {
-                id: "set_streaming",
-                name: "Set streaming state",
-                desc: "",
-                args: args!(
-                    decl_arg! {
-                        id: "state",
-                        name: "State",
-                        desc: "",
-                        vtype: "enum",
-                    },
-                ),
-            },
-            decl_action! {
-                id: "set_recording",
-                name: "Set recording state",
-                desc: "",
-                args: args!(
-                    decl_arg! {
-                        id: "state",
-                        name: "State",
-                        desc: "",
-                        vtype: "enum",
-                    },
-                ),
-            },
-            decl_action! {
-                id: "set_virtual_cam",
-                name: "Set virtual camera state",
-                desc: "",
-                args: args!(
-                    decl_arg! {
-                        id: "state",
-                        name: "State",
-                        desc: "",
-                        vtype: "enum",
-                    },
-                ),
-            },
-            decl_action! {
-                id: "set_profile",
-                name: "Set profile",
-                desc: "Changes current active profile",
-                args: args! (
-                    decl_arg! {
-                        id: "profile",
-                        name: "Profile",
-                        desc: "",
-                        vtype: "enum",
-                    },
-                ),
-            },
-            decl_action! {
-                id: "set_mute",
-                name: "Set mute",
-                desc: "Mute and unmute audio sources",
-                args: args!(
-                    decl_arg! {
-                        id: "source",
-                        name: "Source",
-                        desc: "",
-                        vtype: "enum",
-                    },
-                    decl_arg! {
-                        id: "state",
-                        name: "State",
-                        desc: "",
-                        vtype: "enum",
-                    },
-                ),
-            },
-        ),
-
-        fn_init: init,
-        fn_update: update,
-        fn_get_variable: get_variable,
-        fn_run_action: run_action,
-
-        fn_get_enum: get_enum,
-    }
+    PluginBuilder::new("rustdeck_obs", "Rustdeck OBS", "A plugin to manage OBS through websocket")
+        .init(decorate_fn_init!(init))
+        .update(decorate_fn_update!(update))
+        .get_variable(decorate_fn_get_variable!(get_variable))
+        .run_action(decorate_fn_run_action!(run_action))
+        .get_enum(decorate_fn_get_enum!(get_enum))
+        .variable(Variable::new("scene", "Scene", Type::String))
+        .variable(Variable::new("profile", "Profile", Type::String))
+        .variable(Variable::new("is_streaming", "Is Streaming", Type::Bool))
+        .variable(Variable::new("streaming_state", "Streaming State", Type::String))
+        // .variable(Variable::new("is_recording", "Is Recording", Type::Bool))
+        // .variable(Variable::new("recording_state", "Recording State", Type::String))
+        .action(
+            Action::new("set_filter", "Set filter state", "")
+                .arg("source", "Source", "The name of the source", Type::Enum)
+                .arg("filter", "Filter", "The name of the filter", Type::String)
+                .arg("state", "State", "", Type::Enum)
+        )
+        .action(
+            Action::new("set_source_visibility", "Set source visibility", "")
+                .arg("scene", "Scene", "The name of the scene", Type::Enum)
+                .arg("source", "Source", "The name of the source", Type::String)
+                .arg("state", "State", "The visibility state", Type::Enum)
+        )
+        .action(
+            Action::new("set_scene", "Set scene", "Sets scene (program)")
+                .arg("scene", "Scene", "Destination scene name", Type::Enum)
+        )
+        .action(
+            Action::new("set_streaming", "Set streaming state", "")
+                .arg("state", "State", "", Type::Enum)
+        )
+        .action(
+            Action::new("set_recording", "Set recording state", "")
+                .arg("state", "State", "", Type::Enum)
+        )
+        .action(
+            Action::new("set_virtual_cam", "Set virtual camera state", "")
+                .arg("state", "State", "", Type::Enum)
+        )
+        .action(
+            Action::new("set_profile", "Set profile", "Changes current active profile")
+                .arg("profile", "Profile", "The name of the profile", Type::Enum)
+        )
+        .action(
+            Action::new("set_mute", "Set mute", "Mute and unmute audio sources")
+                .arg("source", "Source", "The name of the source", Type::Enum)
+                .arg("state", "State", "The mute state", Type::Enum)
+        )
+        .build()
+        .unwrap()
 }
