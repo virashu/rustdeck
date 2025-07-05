@@ -1,4 +1,102 @@
 #[macro_export]
+macro_rules! decorate_fn_init {
+    ( $user_fn_init:expr ) => {{
+        unsafe extern "C" fn _fn_init() -> $crate::proto::Result {
+            match ($user_fn_init)() {
+                Ok(state) => {
+                    let raw_state = ::std::boxed::Box::into_raw(::std::boxed::Box::new(state));
+                    $crate::proto::Result {
+                        status: 0,
+                        content: raw_state.cast(),
+                    }
+                }
+                Err(e) => $crate::proto::Result {
+                    status: 1,
+                    content: ::std::ffi::CString::new(e.to_string())
+                        .unwrap()
+                        .into_raw()
+                        .cast(),
+                },
+            }
+        }
+
+        _fn_init
+    }};
+}
+
+#[macro_export]
+macro_rules! decorate_fn_update {
+    ( $user_fn_update:expr ) => {{
+        unsafe extern "C" fn _fn_update(state: *mut ::std::ffi::c_void) {
+            let user_state = unsafe { &mut *state.cast() };
+            ($user_fn_update)(user_state);
+        }
+
+        _fn_update
+    }};
+}
+
+#[macro_export]
+macro_rules! decorate_fn_get_variable {
+    ( $user_fn_get_variable:expr ) => {{
+        unsafe extern "C" fn _fn_get_variable(
+            state: *mut ::std::ffi::c_void,
+            id: *const ::std::ffi::c_char,
+        ) -> $crate::proto::Result {
+            let state = unsafe { &mut *state.cast() };
+            let id = unsafe { $crate::util::ptr_to_str(id) };
+            let res = ($user_fn_get_variable)(state, id);
+
+            match res {
+                Ok(value) => $crate::proto::Result {
+                    status: 0,
+                    content: ::std::ffi::CString::new(value).unwrap().into_raw().cast(),
+                },
+                Err(e) => $crate::proto::Result {
+                    status: 1,
+                    content: ::std::ffi::CString::new(e.to_string())
+                        .unwrap()
+                        .into_raw()
+                        .cast(),
+                },
+            }
+        }
+
+        _fn_get_variable
+    }};
+}
+
+#[macro_export]
+macro_rules! decorate_fn_run_action {
+    ( $user_fn_run_action:expr ) => {{
+        unsafe extern "C" fn _fn_run_action(
+            state: *mut ::std::ffi::c_void,
+            id: *const ::std::ffi::c_char,
+            args: *const $crate::proto::Arg,
+        ) -> $crate::proto::Result {
+            let user_state = unsafe { &mut *state.cast() };
+            let id = unsafe { ::std::ffi::CStr::from_ptr(id).to_str().unwrap() };
+            let args = $crate::Args::from(args);
+            match ($user_fn_run_action)(user_state, id, &args) {
+                Ok(_) => $crate::proto::Result {
+                    status: 0,
+                    content: ::std::ptr::null_mut(),
+                },
+                Err(e) => $crate::proto::Result {
+                    status: 1,
+                    content: ::std::ffi::CString::new(e.to_string())
+                        .unwrap()
+                        .into_raw()
+                        .cast(),
+                },
+            }
+        }
+
+        _fn_run_action
+    }};
+}
+
+#[macro_export]
 macro_rules! export_plugin {
     ( $in:expr ) => {
         #[unsafe(no_mangle)]
@@ -33,72 +131,10 @@ macro_rules! decl_plugin {
         $(,)?
     ) => {
         unsafe {
-            unsafe extern "C" fn fn_init() -> $crate::proto::Result {
-                match ($user_fn_init)() {
-                    Ok(state) => {
-                        let raw_state = ::std::boxed::Box::into_raw(::std::boxed::Box::new(state));
-                        $crate::proto::Result {
-                            status: 0,
-                            content: raw_state.cast(),
-                        }
-                    }
-                    Err(e) => $crate::proto::Result {
-                        status: 1,
-                        content: ::std::ffi::CString::new(e.to_string())
-                            .unwrap()
-                            .into_raw()
-                            .cast(),
-                    },
-                }
-            }
-            unsafe extern "C" fn fn_update(state: *mut ::std::ffi::c_void) {
-                let user_state = unsafe { &mut *state.cast() };
-                ($user_fn_update)(user_state);
-            }
-            unsafe extern "C" fn fn_get_variable(
-                state: *mut ::std::ffi::c_void,
-                id: *const ::std::ffi::c_char,
-            ) -> $crate::proto::Result {
-                let state = unsafe { &mut *state.cast() };
-                let id = $crate::util::ptr_to_str(id);
-                let res = ($user_fn_get_variable)(state, id);
-
-                match res {
-                    Ok(value) => $crate::proto::Result {
-                        status: 0,
-                        content: ::std::ffi::CString::new(value).unwrap().into_raw().cast(),
-                    },
-                    Err(e) => $crate::proto::Result {
-                        status: 1,
-                        content: ::std::ffi::CString::new(e.to_string())
-                            .unwrap()
-                            .into_raw()
-                            .cast(),
-                    },
-                }
-            }
-            unsafe extern "C" fn fn_run_action(
-                state: *mut ::std::ffi::c_void,
-                id: *const ::std::ffi::c_char,
-                args: *const $crate::proto::Arg,
-            ) -> $crate::proto::Result {
-                let user_state = unsafe { &mut *state.cast() };
-                let id = unsafe { ::std::ffi::CStr::from_ptr(id).to_str().unwrap() };
-                let args = $crate::Args::from(args);
-                match ($user_fn_run_action)(user_state, id, &args) {
-                    Ok(_) => $crate::proto::Result {
-                        status: 0,
-                        content: ::std::ptr::null_mut(),
-                    },
-                    Err(e) => $crate::proto::Result {
-                        status: 1,
-                        content: ::std::ffi::CString::new(e.to_string())
-                            .unwrap()
-                            .into_raw()
-                            .cast(),
-                    },
-                }
-            }
+            let fn_init = $crate::decorate_fn_init!($user_fn_init);
+            let fn_update = $crate::decorate_fn_update!($user_fn_update);
+            let fn_get_variable = $crate::decorate_fn_get_variable!($user_fn_get_variable);
+            let fn_run_action = $crate::decorate_fn_run_action!($user_fn_run_action);
 
             ::std::boxed::Box::into_raw(::std::boxed::Box::new($crate::proto::Plugin {
                 id: $crate::util::str_to_ptr($id),

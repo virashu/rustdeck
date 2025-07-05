@@ -1,5 +1,5 @@
 mod args;
-// mod builder;
+mod builder;
 mod datatype;
 mod macros;
 pub mod proto;

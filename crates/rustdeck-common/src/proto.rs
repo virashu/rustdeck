@@ -38,6 +38,14 @@ pub struct Variable {
     pub r#type: i32,
 }
 
+/* Methods */
+pub type FnInit = unsafe extern "C" fn() -> Result;
+pub type FnUpdate = unsafe extern "C" fn(state: *mut c_void);
+pub type FnGetVariable = unsafe extern "C" fn(state: *mut c_void, id: *const c_char) -> Result;
+pub type FnRunAction =
+    unsafe extern "C" fn(state: *mut c_void, id: *const c_char, args: *const Arg) -> Result;
+pub type FnGetEnum = *const unsafe extern "C" fn(state: *mut c_void, id: *const c_char) -> Result;
+
 #[repr(C)]
 pub struct Plugin {
     pub id: *const c_char,
@@ -47,15 +55,15 @@ pub struct Plugin {
     pub variables: *const *const Variable,
     pub actions: *const *const Action,
 
-    pub fn_init: unsafe extern "C" fn() -> Result,
-    pub fn_update: unsafe extern "C" fn(state: *mut c_void),
-    pub fn_get_variable: unsafe extern "C" fn(state: *mut c_void, id: *const c_char) -> Result,
-    pub fn_run_action:
-        unsafe extern "C" fn(state: *mut c_void, id: *const c_char, args: *const Arg) -> Result,
+    pub fn_init: FnInit,
+    pub fn_update: FnUpdate,
+    pub fn_get_variable: FnGetVariable,
+    pub fn_run_action: FnRunAction,
 
-    pub fn_get_enum: *const unsafe extern "C" fn(state: *mut c_void, id: *const c_char) -> Result,
+    /* Optional */
+    pub fn_get_enum: FnGetEnum,
 }
 
+/* Globals */
 pub type BuildFn = unsafe extern "C" fn() -> *const Plugin;
-
 pub type FreeStringFn = unsafe extern "C" fn(*mut c_char);
