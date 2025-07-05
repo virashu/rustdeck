@@ -192,7 +192,22 @@ impl PluginBuilder {
                             id: util::str_to_ptr(act.id),
                             name: util::str_to_ptr(act.name),
                             desc: util::str_to_ptr(act.desc),
-                            args: std::ptr::null(),
+                            args: ManuallyDrop::new(
+                                act.args
+                                    .into_iter()
+                                    .map(|arg| {
+                                        Box::into_raw(Box::new(proto::ActionArg {
+                                            id: util::str_to_ptr(arg.id),
+                                            name: util::str_to_ptr(arg.name),
+                                            desc: util::str_to_ptr(arg.desc),
+                                            r#type: arg.vtype.into(),
+                                        }))
+                                        .cast_const()
+                                    })
+                                    .chain(vec![std::ptr::null()])
+                                    .collect::<Vec<_>>(),
+                            )
+                            .as_ptr(),
                         }))
                         .cast_const()
                     })
