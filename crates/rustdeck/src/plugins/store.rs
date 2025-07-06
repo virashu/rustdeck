@@ -348,8 +348,8 @@ impl PluginStore {
         //     ));
         // }
 
-        plugin
+        _ = plugin
             .set_config_value(i, value.as_ref().to_owned())
-            .unwrap();
+            .inspect_err(|e| tracing::warn!("Failed to set config: {}", e));
     }
 }

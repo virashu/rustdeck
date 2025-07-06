@@ -324,13 +324,26 @@ impl Plugin {
         let state = self.state.expect("Plugin is not initialized");
 
         unsafe {
-            (self.inner.fn_get_config_value.as_ref().unwrap())(
+            let res = (self.inner.fn_get_config_value.as_ref().unwrap())(
                 state,
                 CString::new(id.as_ref()).unwrap().as_ptr().cast::<c_char>(),
             );
-        }
 
-        todo!()
+            if res.status == 0 {
+                let value = try_ptr_to_str(res.content.cast()).unwrap().to_owned();
+                self.free(res.content.cast());
+                Ok(value.split('\n').map(ToOwned::to_owned).collect())
+            } else {
+                try_ptr_to_str(res.content.cast()).map_or_else(
+                    |_| Err(String::from("<no error description>")),
+                    |error| {
+                        let error = error.to_owned();
+                        self.free(res.content.cast());
+                        Err(error)
+                    },
+                )
+            }
+        }
     }
 
     pub fn set_config_value<T>(&mut self, id: T, value: String) -> Result<(), String>
@@ -345,13 +358,25 @@ impl Plugin {
                 .cast::<c_char>(),
         });
         unsafe {
-            (self.inner.fn_set_config_value.as_ref().unwrap())(
+            let res = (self.inner.fn_set_config_value.as_ref().unwrap())(
                 state,
                 CString::new(id.as_ref()).unwrap().as_ptr().cast::<c_char>(),
                 std::ptr::from_ref(&arg.as_arg()),
             );
+
+            if res.status == 0 {
+                Ok(())
+            } else {
+                try_ptr_to_str(res.content.cast()).map_or_else(
+                    |_| Err(String::from("<no error description>")),
+                    |error| {
+                        let error = error.to_owned();
+                        self.free(res.content.cast());
+                        Err(error)
+                    },
+                )
+            }
         }
-        Ok(())
     }
 }
 
