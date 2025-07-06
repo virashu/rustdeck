@@ -11,13 +11,11 @@ static BUTTON_VAR_REGEX: std::sync::LazyLock<regex::Regex> = std::sync::LazyLock
 
 /// Button content vertical align
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
+#[serde(rename_all = "lowercase")]
 pub enum DeckButtonStyleTextAlign {
     #[default]
-    #[serde(alias = "center", rename = "center")]
     Center,
-    #[serde(alias = "top", rename = "top")]
     Top,
-    #[serde(alias = "bottom", rename = "bottom")]
     Bottom,
 }
 
@@ -92,7 +90,7 @@ impl<'a> VariableRenderer<'a> {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct RawDeckButtonAction {
     pub id: String,
     pub args: Vec<String>,

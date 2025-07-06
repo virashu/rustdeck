@@ -7,6 +7,7 @@ mod safe_arg;
 mod store;
 // mod util;
 
+pub use datatype::PluginDataType;
 pub use loading::load_plugins_at;
 pub use plugin::Plugin;
 pub use store::PluginStore;

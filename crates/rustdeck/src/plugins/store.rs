@@ -136,7 +136,7 @@ impl PluginStore {
             .map(|var| PluginVariable {
                 id: format!("{}.{}", plugin.id, var.id),
                 description: var.description.clone(),
-                r#type: var.r#type.to_string(),
+                r#type: var.r#type.clone(),
             })
             .collect()
     }
@@ -189,7 +189,7 @@ impl PluginStore {
                         id: format!("{}.{}.{}", plugin.id, act.id, a.id),
                         name: a.name.clone(),
                         description: a.description.clone(),
-                        r#type: a.r#type.to_string(),
+                        r#type: a.r#type.clone(),
                     })
                     .collect(),
             })
@@ -268,7 +268,7 @@ impl PluginStore {
                 id: opt.id.clone(),
                 name: opt.name.clone(),
                 description: opt.description.clone(),
-                r#type: opt.r#type.to_string(),
+                r#type: opt.r#type.clone(),
             })
             .collect()
     }

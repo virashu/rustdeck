@@ -1,6 +1,9 @@
+use serde::Serialize;
+
 use super::error::PluginLoadError;
 
-#[derive(Clone)]
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "lowercase")]
 pub enum PluginDataType {
     Bool,
     Int,

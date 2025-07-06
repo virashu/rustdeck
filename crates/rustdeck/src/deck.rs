@@ -14,7 +14,7 @@ use crate::{
         PluginAction, PluginActionArgsData, PluginActionGroup, PluginConfigOption,
         PluginConfigOptionGroup, PluginData, PluginVariable, PluginVariableGroup,
     },
-    plugins::PluginStore,
+    plugins::{PluginDataType, PluginStore},
 };
 
 mod config {
@@ -70,7 +70,7 @@ impl Deck {
                         id: String::from("deck.switch_screen.destination"),
                         name: String::from("To "),
                         description: String::from("Screen to switch to"),
-                        r#type: String::from("enum"),
+                        r#type: PluginDataType::Enum,
                     }],
                 }],
             },
@@ -82,13 +82,13 @@ impl Deck {
                         id: String::from("deck.dimensions_cols"),
                         name: String::from("Columns"),
                         description: String::from("Amount of deck button columns"),
-                        r#type: String::from("int"),
+                        r#type: PluginDataType::Int,
                     },
                     PluginConfigOption {
                         id: String::from("deck.dimensions_rows"),
                         name: String::from("Rows"),
                         description: String::from("Amount of deck button rows"),
-                        r#type: String::from("int"),
+                        r#type: PluginDataType::Int,
                     },
                 ],
             },

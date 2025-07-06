@@ -1,11 +1,13 @@
 use serde::Serialize;
 
+use crate::plugins::PluginDataType;
+
 #[derive(Serialize, Clone)]
 pub struct PluginActionArgsData {
     pub id: String,
     pub name: String,
     pub description: String,
-    pub r#type: String,
+    pub r#type: PluginDataType,
 }
 
 #[derive(Serialize, Clone)]
@@ -37,7 +39,7 @@ pub struct PluginVariable {
     /// Variable description
     pub description: String,
     /// Variable type
-    pub r#type: String,
+    pub r#type: PluginDataType,
 }
 
 #[derive(Serialize, Clone)]
@@ -69,7 +71,7 @@ pub struct PluginConfigOption {
     pub id: String,
     pub name: String,
     pub description: String,
-    pub r#type: String,
+    pub r#type: PluginDataType,
 }
 
 #[derive(Serialize, Clone)]
