@@ -187,6 +187,7 @@ macro_rules! decl_plugin {
 
                 fn_get_enum: $user_fn_get_enum,
                 fn_get_config_value: ::std::ptr::null(),
+                fn_set_config_value: ::std::ptr::null(),
             })) as *const $crate::proto::Plugin
         }
     };

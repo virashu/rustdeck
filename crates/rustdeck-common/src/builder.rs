@@ -107,6 +107,7 @@ pub struct PluginBuilder {
 
     fn_get_enum: Option<proto::FnGetEnum>,
     fn_get_config_value: Option<proto::FnGetConfigValue>,
+    fn_set_config_value: Option<proto::FnSetConfigValue>,
 }
 
 impl PluginBuilder {
@@ -127,6 +128,7 @@ impl PluginBuilder {
 
             fn_get_enum: None,
             fn_get_config_value: None,
+            fn_set_config_value: None,
         }
     }
 
@@ -204,6 +206,7 @@ impl PluginBuilder {
     /// # Errors
     ///
     /// This function will return an error if any of the required functions are not set.
+    #[allow(clippy::similar_names)]
     pub fn build(self) -> Result<*const proto::Plugin, String> {
         let fn_init = self
             .fn_init
@@ -218,7 +221,9 @@ impl PluginBuilder {
             .fn_run_action
             .ok_or_else(|| "fn_run_action is not set".to_string())?;
         let fn_get_enum = self.fn_get_enum.unwrap_or_else(std::ptr::null);
+
         let fn_get_config_value = self.fn_get_config_value.unwrap_or_else(std::ptr::null);
+        let fn_set_config_value = self.fn_set_config_value.unwrap_or_else(std::ptr::null);
 
         #[allow(clippy::option_if_let_else)]
         let variables = match self.variables {
@@ -301,6 +306,7 @@ impl PluginBuilder {
             fn_run_action,
             fn_get_enum,
             fn_get_config_value,
+            fn_set_config_value,
         };
 
         Ok(Box::into_raw(Box::new(plugin)))

@@ -5,8 +5,8 @@ use parking_lot::RwLock;
 use crate::{
     buttons::RawDeckButtonAction,
     models::{
-        PluginActionArgsData, PluginActionsGroupedData, PluginActionsUngroupedData, PluginData,
-        PluginVariablesGroupedData, PluginVariablesUngroupedData,
+        PluginAction, PluginActionArgsData, PluginActionGroup, PluginConfigOption,
+        PluginConfigOptionGroup, PluginData, PluginVariable, PluginVariableGroup,
     },
     plugins::error::ActionError,
 };
@@ -129,11 +129,11 @@ impl PluginStore {
     }
 
     /// Get variables of a plugin
-    fn get_variables_of(plugin: &Plugin) -> Vec<PluginVariablesUngroupedData> {
+    fn get_variables_of(plugin: &Plugin) -> Vec<PluginVariable> {
         plugin
             .variables
             .iter()
-            .map(|var| PluginVariablesUngroupedData {
+            .map(|var| PluginVariable {
                 id: format!("{}.{}", plugin.id, var.id),
                 description: var.description.clone(),
                 r#type: var.r#type.to_string(),
@@ -142,7 +142,7 @@ impl PluginStore {
     }
 
     /// Get all variables of all plugins in the same vector
-    pub fn get_all_variables_ungrouped(&self) -> Vec<PluginVariablesUngroupedData> {
+    pub fn get_all_variables_ungrouped(&self) -> Vec<PluginVariable> {
         self.plugins
             .read()
             .values()
@@ -153,7 +153,7 @@ impl PluginStore {
     /// Get all variables grouped by plugin with plugin `id` and `name`
     ///
     /// Does not include plugins without variables
-    pub fn get_all_variables_grouped(&self) -> Vec<PluginVariablesGroupedData> {
+    pub fn get_all_variables_grouped(&self) -> Vec<PluginVariableGroup> {
         self.plugins
             .read()
             .values()
@@ -163,7 +163,7 @@ impl PluginStore {
                 if variables.is_empty() {
                     None
                 } else {
-                    Some(PluginVariablesGroupedData {
+                    Some(PluginVariableGroup {
                         id: lock.id.clone(),
                         name: lock.name.clone(),
                         variables,
@@ -174,22 +174,21 @@ impl PluginStore {
     }
 
     /// Get actions of a plugin
-    fn get_actions_of(plugin: &Plugin) -> Vec<PluginActionsUngroupedData> {
+    fn get_actions_of(plugin: &Plugin) -> Vec<PluginAction> {
         plugin
             .actions
             .iter()
-            .map(|act| PluginActionsUngroupedData {
+            .map(|act| PluginAction {
                 id: format!("{}.{}", plugin.id, act.id),
                 name: act.name.clone(),
                 description: act.description.clone(),
                 args: act
                     .args
                     .iter()
-                    .cloned()
                     .map(|a| PluginActionArgsData {
                         id: format!("{}.{}.{}", plugin.id, act.id, a.id),
-                        name: a.name,
-                        description: a.description,
+                        name: a.name.clone(),
+                        description: a.description.clone(),
                         r#type: a.r#type.to_string(),
                     })
                     .collect(),
@@ -198,7 +197,7 @@ impl PluginStore {
     }
 
     /// Get all actions of all plugins in the same vector
-    pub fn get_all_actions_ungrouped(&self) -> Vec<PluginActionsUngroupedData> {
+    pub fn get_all_actions_ungrouped(&self) -> Vec<PluginAction> {
         self.plugins
             .read()
             .values()
@@ -209,7 +208,7 @@ impl PluginStore {
     /// Get all actions grouped by plugin with plugin `id` and `name`
     ///
     /// Does not include plugins without actions
-    pub fn get_all_actions_grouped(&self) -> Vec<PluginActionsGroupedData> {
+    pub fn get_all_actions_grouped(&self) -> Vec<PluginActionGroup> {
         self.plugins
             .read()
             .values()
@@ -219,7 +218,7 @@ impl PluginStore {
                 if actions.is_empty() {
                     None
                 } else {
-                    Some(PluginActionsGroupedData {
+                    Some(PluginActionGroup {
                         id: lock.id.clone(),
                         name: lock.name.clone(),
                         actions,
@@ -261,14 +260,90 @@ impl PluginStore {
             .get_enum_arg(act_id)
     }
 
+    fn get_config_options_of(plugin: &Plugin) -> Vec<PluginConfigOption> {
+        plugin
+            .config_options
+            .iter()
+            .map(|opt| PluginConfigOption {
+                id: opt.id.clone(),
+                name: opt.name.clone(),
+                description: opt.description.clone(),
+                r#type: opt.r#type.to_string(),
+            })
+            .collect()
+    }
+
+    pub fn get_all_config_options_ungrouped(&self) -> Vec<PluginConfigOption> {
+        self.plugins
+            .read()
+            .values()
+            .flat_map(|p| Self::get_config_options_of(&p.read()))
+            .collect()
+    }
+
+    pub fn get_all_config_options_grouped(&self) -> Vec<PluginConfigOptionGroup> {
+        self.plugins
+            .read()
+            .values()
+            .filter_map(|p| {
+                let lock = p.read();
+                let options = Self::get_config_options_of(&lock);
+                if options.is_empty() {
+                    None
+                } else {
+                    Some(PluginConfigOptionGroup {
+                        id: lock.id.clone(),
+                        name: lock.name.clone(),
+                        config_options: options,
+                    })
+                }
+            })
+            .collect()
+    }
+
+    /// Get full plugins config grouped by plugin id and without prefix
     pub fn get_plugins_config(&self) -> HashMap<String, HashMap<String, String>> {
         self.plugins
             .read()
             .values()
             .map(|p| {
-                let lock = p.read();
-                todo!()
+                let mut lock = p.write();
+                let opts_ids = lock
+                    .config_options
+                    .iter()
+                    .map(|opt| opt.id.clone())
+                    .collect::<Vec<String>>();
+                let opts = opts_ids
+                    .iter()
+                    .map(|opt_id| (opt_id.clone(), lock.get_config_value(opt_id).unwrap()))
+                    .collect();
+
+                (lock.id.clone(), opts)
             })
             .collect()
+    }
+
+    pub fn set_config(&self, id: impl AsRef<str>, value: impl AsRef<str>) {
+        let (plug_id, i) = id
+            .as_ref()
+            .split_once('.')
+            .ok_or("Wrong config format")
+            .unwrap();
+        let plugins = self.plugins.read();
+        let mut plugin = plugins
+            .get(plug_id)
+            .ok_or_else(|| format!("Cannot find plugin: `{plug_id}`"))
+            .unwrap()
+            .write();
+
+        // if !plugin.variables.iter().any(|v| v.id == i) {
+        //     Err(format!(
+        //         "Plugin `{plug_id}` does not have config option `{i}`"
+        //     ));
+        // }
+
+        plugin
+            .set_config_value(i, value.as_ref().to_owned())
+            .unwrap();
     }
 }

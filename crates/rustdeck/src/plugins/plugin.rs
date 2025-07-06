@@ -39,7 +39,6 @@ pub struct Plugin {
     state: Option<*mut c_void>,
     has_free: bool,
 
-    #[allow(dead_code, reason = "plugin depends on library")]
     lib: Option<Library>,
 }
 
@@ -300,6 +299,44 @@ impl Plugin {
                 )
             }
         }
+    }
+
+    pub fn get_config_value<T>(&mut self, id: T) -> Result<String, String>
+    where
+        T: AsRef<str>,
+    {
+        let state = self.state.expect("Plugin is not initialized");
+
+        unsafe {
+            (self.inner.fn_get_config_value.as_ref().unwrap())(
+                state,
+                CString::new(id.as_ref()).unwrap().as_ptr().cast::<c_char>(),
+            );
+        }
+
+        todo!()
+    }
+
+    pub fn set_config_value<T>(&mut self, id: T, value: String) -> Result<(), String>
+    where
+        T: AsRef<str>,
+    {
+        let state = self.state.expect("Plugin is not initialized");
+
+        let arg = SafeArg::String(Arg {
+            c: ManuallyDrop::new(CString::new(value).unwrap())
+                .as_ptr()
+                .cast::<c_char>(),
+        });
+        unsafe {
+            (self.inner.fn_set_config_value.as_ref().unwrap())(
+                state,
+                CString::new(id.as_ref()).unwrap().as_ptr().cast::<c_char>(),
+                std::ptr::from_ref(&arg.as_arg()),
+            );
+        }
+
+        todo!()
     }
 }
 

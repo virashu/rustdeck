@@ -55,6 +55,8 @@ pub type FnRunAction =
 pub type FnGetEnum = *const unsafe extern "C" fn(state: *mut c_void, id: *const c_char) -> Result;
 pub type FnGetConfigValue =
     *const unsafe extern "C" fn(state: *mut c_void, id: *const c_char) -> Result;
+pub type FnSetConfigValue =
+    *const unsafe extern "C" fn(state: *mut c_void, id: *const c_char, value: *const Arg) -> Result;
 
 #[repr(C)]
 pub struct Plugin {
@@ -74,6 +76,7 @@ pub struct Plugin {
     /* Optional */
     pub fn_get_enum: FnGetEnum,
     pub fn_get_config_value: FnGetConfigValue,
+    pub fn_set_config_value: FnSetConfigValue,
 }
 
 /* Globals */

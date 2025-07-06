@@ -11,8 +11,8 @@ use crate::{
     constants::{DECK_ACTION_ID, DECK_ACTION_NAME, DECK_ACTION_PREFIX},
     icon_store::{IconStore, IconStoreGetError},
     models::{
-        PluginActionArgsData, PluginActionsGroupedData, PluginActionsUngroupedData, PluginData,
-        PluginVariablesGroupedData, PluginVariablesUngroupedData,
+        PluginAction, PluginActionArgsData, PluginActionGroup, PluginConfigOption,
+        PluginConfigOptionGroup, PluginData, PluginVariable, PluginVariableGroup,
     },
     plugins::PluginStore,
 };
@@ -38,8 +38,10 @@ pub struct Deck {
     plugin_store: PluginStore,
     icon_store: IconStore,
     #[allow(clippy::struct_field_names)]
+
     /// Actions of the deck itself
-    deck_actions: PluginActionsGroupedData,
+    actions: PluginActionGroup,
+    config_options: PluginConfigOptionGroup,
 }
 
 impl Deck {
@@ -57,10 +59,10 @@ impl Deck {
             screens: RwLock::new(config.screens.into_iter().collect()),
             plugin_store,
             icon_store,
-            deck_actions: PluginActionsGroupedData {
+            actions: PluginActionGroup {
                 id: String::from(DECK_ACTION_ID),
                 name: String::from(DECK_ACTION_NAME),
-                actions: vec![PluginActionsUngroupedData {
+                actions: vec![PluginAction {
                     id: String::from("deck.switch_screen"),
                     name: String::from("Switch screen"),
                     description: String::new(),
@@ -71,6 +73,24 @@ impl Deck {
                         r#type: String::from("enum"),
                     }],
                 }],
+            },
+            config_options: PluginConfigOptionGroup {
+                id: String::from(DECK_ACTION_ID),
+                name: String::from(DECK_ACTION_NAME),
+                config_options: vec![
+                    PluginConfigOption {
+                        id: String::from("deck.dimensions_cols"),
+                        name: String::from("Columns"),
+                        description: String::from("Amount of deck button columns"),
+                        r#type: String::from("int"),
+                    },
+                    PluginConfigOption {
+                        id: String::from("deck.dimensions_rows"),
+                        name: String::from("Rows"),
+                        description: String::from("Amount of deck button rows"),
+                        r#type: String::from("int"),
+                    },
+                ],
             },
         })
     }
@@ -182,37 +202,43 @@ impl Deck {
     }
 
     /// Get names and values of all available variables
-    pub fn get_all_variables_ungrouped(&self) -> Vec<PluginVariablesUngroupedData> {
+    pub fn get_all_variables_ungrouped(&self) -> Vec<PluginVariable> {
         self.plugin_store.get_all_variables_ungrouped()
     }
 
     /// Get names and values of all available variables grouped by plugin id
-    pub fn get_all_variables_grouped(&self) -> Vec<PluginVariablesGroupedData> {
+    pub fn get_all_variables_grouped(&self) -> Vec<PluginVariableGroup> {
         self.plugin_store.get_all_variables_grouped()
     }
 
     /// Get ids of all available actions
-    pub fn get_all_actions_ungrouped(&self) -> Vec<PluginActionsUngroupedData> {
+    pub fn get_all_actions_ungrouped(&self) -> Vec<PluginAction> {
         [
-            self.deck_actions
-                .actions
-                .clone()
-                .into_iter()
-                .map(|a| PluginActionsUngroupedData {
-                    id: format!("{DECK_ACTION_PREFIX}{}", a.id),
-                    ..a
-                })
-                .collect(),
+            self.actions.actions.clone(),
             self.plugin_store.get_all_actions_ungrouped(),
         ]
         .concat()
     }
 
     /// Get all actions with plugin id and name info
-    pub fn get_all_actions_grouped(&self) -> Vec<PluginActionsGroupedData> {
+    pub fn get_all_actions_grouped(&self) -> Vec<PluginActionGroup> {
         let mut actions = self.plugin_store.get_all_actions_grouped();
-        actions.insert(0, self.deck_actions.clone());
+        actions.insert(0, self.actions.clone());
         actions
+    }
+
+    pub fn get_all_config_options_ungrouped(&self) -> Vec<PluginConfigOption> {
+        [
+            self.config_options.config_options.clone(),
+            self.plugin_store.get_all_config_options_ungrouped(),
+        ]
+        .concat()
+    }
+
+    pub fn get_all_config_options_grouped(&self) -> Vec<PluginConfigOptionGroup> {
+        let mut config_options = self.plugin_store.get_all_config_options_grouped();
+        config_options.insert(0, self.config_options.clone());
+        config_options
     }
 
     pub fn get_all_plugins(&self) -> Vec<PluginData> {
@@ -223,8 +249,16 @@ impl Deck {
         self.icon_store.keys()
     }
 
-    pub fn update_config(&self, update: DeckDimensionConfig) {
-        *self.config.write() = update;
+    pub fn update_config(&self, id: String, value: String) {
+        match id.as_str() {
+            "deck.dimensions_cols" => {
+                self.config.write().cols = value.parse().unwrap();
+            }
+            "deck.dimensions_rows" => {
+                self.config.write().rows = value.parse().unwrap();
+            }
+            _ => self.plugin_store.set_config(id, value),
+        }
     }
 
     /// Change raw button properties (`template`, `on_click_action`, etc.)

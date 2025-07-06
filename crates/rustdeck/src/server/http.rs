@@ -18,8 +18,8 @@ use crate::{
     deck::{Deck, DeckScreen},
     icon_store::IconStoreGetError,
     models::{
-        PluginActionsGroupedData, PluginActionsUngroupedData, PluginData,
-        PluginVariablesGroupedData, PluginVariablesUngroupedData,
+        PluginAction, PluginActionGroup, PluginConfigOption, PluginConfigOptionGroup, PluginData,
+        PluginVariable, PluginVariableGroup,
     },
 };
 
@@ -118,8 +118,8 @@ async fn get_button(
     Json(state.deck.get_raw_button(pos))
 }
 
-async fn update_config(State(state): State<AxumState>, Json(update): Json<DeckDimensionConfig>) {
-    state.deck.update_config(update);
+async fn update_config(State(state): State<AxumState>, Path((id, value)): Path<(String, String)>) {
+    state.deck.update_config(id, value);
 }
 
 async fn update_button(
@@ -151,28 +151,32 @@ async fn delete_button(State(state): State<AxumState>, Path(pos): Path<(u32, u32
     }
 }
 
-async fn list_variables_ungrouped(
-    State(state): State<AxumState>,
-) -> Json<Vec<PluginVariablesUngroupedData>> {
+async fn list_variables_ungrouped(State(state): State<AxumState>) -> Json<Vec<PluginVariable>> {
     Json(state.deck.get_all_variables_ungrouped())
 }
 
-async fn list_variables_grouped(
-    State(state): State<AxumState>,
-) -> Json<Vec<PluginVariablesGroupedData>> {
+async fn list_variables_grouped(State(state): State<AxumState>) -> Json<Vec<PluginVariableGroup>> {
     Json(state.deck.get_all_variables_grouped())
 }
 
-async fn list_actions_ungrouped(
-    State(state): State<AxumState>,
-) -> Json<Vec<PluginActionsUngroupedData>> {
+async fn list_actions_ungrouped(State(state): State<AxumState>) -> Json<Vec<PluginAction>> {
     Json(state.deck.get_all_actions_ungrouped())
 }
 
-async fn list_actions_grouped(
-    State(state): State<AxumState>,
-) -> Json<Vec<PluginActionsGroupedData>> {
+async fn list_actions_grouped(State(state): State<AxumState>) -> Json<Vec<PluginActionGroup>> {
     Json(state.deck.get_all_actions_grouped())
+}
+
+async fn list_config_options_ungrouped(
+    State(state): State<AxumState>,
+) -> Json<Vec<PluginConfigOption>> {
+    Json(state.deck.get_all_config_options_ungrouped())
+}
+
+async fn list_config_options_grouped(
+    State(state): State<AxumState>,
+) -> Json<Vec<PluginConfigOptionGroup>> {
+    Json(state.deck.get_all_config_options_grouped())
 }
 
 async fn list_plugins(State(state): State<AxumState>) -> Json<Vec<PluginData>> {
@@ -218,7 +222,7 @@ where
         .route("/api/client/click/{y}/{x}", post(handle_click))
         .route("/api/client/icon/raw/{id}", get(get_icon_raw))
         .route("/api/client/icon/b64/{id}", get(get_icon_b64))
-        .route("/api/config/config", patch(update_config))
+        .route("/api/config/config/{id}/{value}", patch(update_config))
         .route(
             "/api/config/button/{y}/{x}",
             get(get_button).patch(update_button).delete(delete_button),
@@ -239,6 +243,14 @@ where
         .route(
             "/api/config/list/variables/grouped",
             get(list_variables_grouped),
+        )
+        .route(
+            "/api/config/list/config_options/ungrouped",
+            get(list_config_options_ungrouped),
+        )
+        .route(
+            "/api/config/list/config_options/grouped",
+            get(list_config_options_grouped),
         )
         .route("/api/config/list/plugins", get(list_plugins))
         .route("/api/config/list/screens", get(list_screens))
