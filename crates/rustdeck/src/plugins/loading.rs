@@ -2,6 +2,11 @@ use std::{fs, path::Path};
 
 use super::Plugin;
 
+/// Try to load all the plugins in given path
+///
+/// # Errors
+/// Error is returned if path cannot be read.
+/// Error is *not* returned if any (or even all) plugins fail to load. Instead, logs are emitted.
 pub fn load_plugins_at(path: &Path) -> Result<Vec<Plugin>, std::io::Error> {
     let plugins: Vec<_> = fs::read_dir(path)?
         .flatten()

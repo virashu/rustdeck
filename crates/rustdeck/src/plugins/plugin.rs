@@ -63,7 +63,7 @@ impl Plugin {
         }
     }
 
-    pub fn try_from_ptr(ptr: *const FFIPlugin) -> Result<Self, PluginLoadError> {
+    pub unsafe fn try_from_ptr(ptr: *const FFIPlugin) -> Result<Self, PluginLoadError> {
         unsafe {
             let plugin = ptr.as_ref().ok_or(PluginLoadError::BuildError)?;
 
@@ -489,7 +489,7 @@ mod tests {
 
     #[test]
     fn test_plugin() {
-        let plugin = Plugin::try_from_ptr(build());
+        let plugin = unsafe { Plugin::try_from_ptr(build()) };
         assert!(plugin.is_ok());
         let plugin = plugin.unwrap();
 

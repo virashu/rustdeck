@@ -12,7 +12,7 @@ use tower_http::{
     trace::TraceLayer,
 };
 
-use crate::{
+use rustdeck::{
     buttons::{DeckButtonPos, DeckButtonUpdate, RawDeckButton},
     config::DeckDimensionConfig,
     deck::{Deck, DeckScreen},
@@ -118,8 +118,11 @@ async fn get_button(
     Json(state.deck.get_raw_button(pos))
 }
 
-async fn update_config(State(state): State<AxumState>, Path((id, value)): Path<(String, String)>) {
-    state.deck.update_config(id, value);
+async fn update_config(
+    State(state): State<AxumState>,
+    Path((id, value)): Path<(String, String)>,
+) -> Result<(), String> {
+    state.deck.update_config(id, value)
 }
 
 async fn update_button(

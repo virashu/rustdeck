@@ -7,7 +7,7 @@ use crate::{
     buttons::{
         DeckButtonUpdate, RawDeckButton, RawDeckButtonAction, RenderedDeckButton, VariableRenderer,
     },
-    config::{DeckButtonScreen, DeckConfig, DeckDimensionConfig, paths::PLUGINS},
+    config::{DeckButtonScreen, DeckConfig, DeckDimensionConfig},
     constants::{DECK_ACTION_ID, DECK_ACTION_NAME, DECK_ACTION_PREFIX},
     icon_store::{IconStore, IconStoreGetError},
     models::{
@@ -45,12 +45,19 @@ pub struct Deck {
 }
 
 impl Deck {
+    /// Create a new deck with uninitialized plugins
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if fails to read plugins dir
     pub fn new(
         config: DeckConfig,
         config_callback: impl Fn(&DeckConfig) + Send + Sync + 'static,
+        plugins_path: impl AsRef<str>,
+        icons_path: impl AsRef<str>,
     ) -> Result<Self, Box<dyn std::error::Error>> {
-        let plugin_store = PluginStore::new(&*PLUGINS)?;
-        let icon_store = IconStore::from_config(config.icons);
+        let plugin_store = PluginStore::new(plugins_path)?;
+        let icon_store = IconStore::from_config(icons_path, config.icons);
 
         Ok(Self {
             config: RwLock::new(config.deck),
@@ -98,7 +105,9 @@ impl Deck {
     pub fn run(&self) {
         self.plugin_store.init_all();
 
-        self.update_config("rustdeck_obs.password".into(), "aaaaaa".into());
+        #[allow(clippy::missing_panics_doc, reason = "temporary")]
+        self.update_config("rustdeck_obs.password".into(), "aaaaaa".into())
+            .unwrap();
 
         let mut inst = Instant::now();
 
@@ -125,7 +134,11 @@ impl Deck {
     }
 
     /// Handles click of a button at position (y, x)
+    ///
+    /// # Errors
+    /// A error is returned if button at `pos` is not found, or if an error occurs during action execution
     pub fn handle_click_at(&self, pos: (u32, u32)) -> Result<(), String> {
+        #[allow(clippy::missing_panics_doc)]
         let action = self
             .screens
             .read()
@@ -148,6 +161,9 @@ impl Deck {
     }
 
     /// Get raw image
+    ///
+    /// # Errors
+    /// Error is returned if icon is not found or cannot be read
     pub fn get_icon_raw<S>(&self, id: S) -> Result<Vec<u8>, IconStoreGetError>
     where
         S: AsRef<str>,
@@ -155,6 +171,10 @@ impl Deck {
         self.icon_store.get_icon_raw(id)
     }
 
+    /// Get a base64-encoded icon
+    ///
+    /// # Errors
+    /// Error is returned if icon is not found or cannot be read
     #[cfg(feature = "icon_store_b64")]
     pub fn get_icon_b64<S>(&self, id: S) -> Result<String, IconStoreGetError>
     where
@@ -179,6 +199,7 @@ impl Deck {
     pub fn get_rendered_screen(&self) -> DeckScreen {
         let mut vars = VariableRenderer::new(&self.plugin_store);
 
+        #[allow(clippy::missing_panics_doc)]
         DeckScreen {
             screen: self.current_screen_id.read().clone(),
             buttons: self
@@ -194,6 +215,7 @@ impl Deck {
 
     /// Get (not rendered) button by position (y, x)
     pub fn get_raw_button(&self, pos: (u32, u32)) -> RawDeckButton {
+        #[allow(clippy::missing_panics_doc)]
         self.screens
             .read()
             .get(self.current_screen_id.read().as_str())
@@ -251,16 +273,22 @@ impl Deck {
         self.icon_store.keys()
     }
 
-    pub fn update_config(&self, id: String, value: String) {
+    /// Update a config value
+    ///
+    /// # Errors
+    /// Error is returned if parsing fails
+    pub fn update_config(&self, id: String, value: String) -> Result<(), String> {
         match id.as_str() {
             "deck.dimensions_cols" => {
-                self.config.write().cols = value.parse().unwrap();
+                self.config.write().cols = value.parse::<u32>().map_err(|e| e.to_string())?;
             }
             "deck.dimensions_rows" => {
-                self.config.write().rows = value.parse().unwrap();
+                self.config.write().rows = value.parse::<u32>().map_err(|e| e.to_string())?;
             }
-            _ => self.plugin_store.set_config(id, value),
+            _ => self.plugin_store.set_config(id, value)?,
         }
+
+        Ok(())
     }
 
     /// Change raw button properties (`template`, `on_click_action`, etc.)
@@ -270,22 +298,25 @@ impl Deck {
     pub fn update_button(&self, pos: (u32, u32), update: DeckButtonUpdate) {
         {
             let mut screens_lock = self.screens.write();
+            #[allow(clippy::missing_panics_doc)]
             let screen = screens_lock
                 .get_mut(self.current_screen_id.read().as_str())
                 .unwrap();
 
-            let button;
-            if let Some(b) = screen.get_mut(&pos) {
-                button = b;
+            if let Some(button) = screen.get_mut(&pos) {
+                button.template = update.template;
+                button.style = update.style;
+                button.icon = update.icon;
+                button.on_click_action = update.on_click_action;
             } else {
-                screen.insert(pos, RawDeckButton::default());
-                button = screen.get_mut(&pos).unwrap();
+                let button = RawDeckButton {
+                    template: update.template,
+                    style: update.style,
+                    icon: update.icon,
+                    on_click_action: update.on_click_action,
+                };
+                screen.insert(pos, button);
             }
-
-            button.template = update.template;
-            button.style = update.style;
-            button.icon = update.icon;
-            button.on_click_action = update.on_click_action;
         }
 
         {
@@ -297,6 +328,7 @@ impl Deck {
     pub fn delete_button(&self, pos: (u32, u32)) -> bool {
         let success = {
             let mut screens_lock = self.screens.write();
+            #[allow(clippy::missing_panics_doc)]
             let screen = screens_lock
                 .get_mut(self.current_screen_id.read().as_str())
                 .unwrap();
@@ -316,6 +348,10 @@ impl Deck {
         *self.current_screen_id.write() = id;
     }
 
+    /// Create a new blank screen
+    ///
+    /// # Errors
+    /// Error is returned if a screen with given `id` already exists
     pub fn new_screen(&self, id: String) -> Result<(), ()> {
         if self.screens.read().contains_key(&id) {
             return Err(());
@@ -331,6 +367,10 @@ impl Deck {
         Ok(())
     }
 
+    /// Change the id of a screen
+    ///
+    /// # Errors
+    /// Error is returned if `old_id` is incorrect or `new_id` already exists
     pub fn rename_screen(&self, old_id: &str, new_id: String) -> Result<(), ()> {
         if !self.screens.read().contains_key(old_id) || self.screens.read().contains_key(&new_id) {
             return Err(());
@@ -338,7 +378,9 @@ impl Deck {
 
         {
             let mut screens_lock = self.screens.write();
+            #[allow(clippy::missing_panics_doc)]
             let index = screens_lock.get_index_of(old_id).unwrap();
+            #[allow(clippy::missing_panics_doc)]
             let screen = screens_lock.swap_remove(old_id).unwrap();
             screens_lock.insert(new_id.clone(), screen);
             let last = screens_lock.len() - 1;
@@ -390,6 +432,7 @@ impl Deck {
     pub fn swap_buttons(&self, a: (u32, u32), b: (u32, u32)) {
         {
             let mut screens_lock = self.screens.write();
+            #[allow(clippy::missing_panics_doc)]
             let screen = screens_lock
                 .get_mut(self.current_screen_id.read().as_str())
                 .unwrap();

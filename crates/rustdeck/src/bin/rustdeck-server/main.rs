@@ -1,19 +1,11 @@
-mod buttons;
 mod config;
-mod constants;
-mod deck;
-mod icon_store;
-mod models;
-mod plugins;
 mod server;
 
 use std::{fs, sync::Arc, thread};
 
-use crate::{
-    config::{load_config, paths, save_config},
-    deck::Deck,
-    server::http,
-};
+use rustdeck::Deck;
+
+use crate::config::{load_config, paths, save_config};
 
 fn init_dirs() {
     fs::create_dir_all(&*paths::PLUGINS).unwrap();
@@ -29,12 +21,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     init_dirs();
     let config = load_config();
 
-    let deck = Arc::new(Deck::new(config, save_config)?);
+    let deck = Arc::new(Deck::new(
+        config,
+        save_config,
+        &*paths::PLUGINS,
+        &*paths::ICONS,
+    )?);
 
     let deck_ref = deck.clone();
     let deck_thread = thread::spawn(move || deck_ref.run());
 
-    http::build_and_run_thread(&deck, "0.0.0.0", 8989);
+    crate::server::http::build_and_run_thread(&deck, "0.0.0.0", 8989);
 
     deck_thread.join().unwrap();
 

@@ -19,6 +19,10 @@ pub struct PluginStore {
 }
 
 impl PluginStore {
+    /// Create a new plugin store and load all the plugins.
+    ///
+    /// # Errors
+    /// Error is returned if path cannot be read.
     pub fn new<S>(path: S) -> Result<Self, io::Error>
     where
         S: AsRef<str>,
@@ -64,6 +68,7 @@ impl PluginStore {
             let mut uninit_vec = self.plugins_uninit.write();
 
             for id in uninit {
+                #[allow(clippy::missing_panics_doc)]
                 uninit_vec.push(plugins.remove(&id).unwrap().into_inner());
             }
         }
@@ -329,27 +334,26 @@ impl PluginStore {
             .collect()
     }
 
-    pub fn set_config(&self, id: impl AsRef<str>, value: impl AsRef<str>) {
+    pub fn set_config(&self, id: impl AsRef<str>, value: impl AsRef<str>) -> Result<(), String> {
         let (plug_id, i) = id
             .as_ref()
             .split_once('.')
-            .ok_or("Wrong config format")
-            .unwrap();
+            .ok_or_else(|| String::from("Wrong config format"))?;
+
         let plugins = self.plugins.read();
         let mut plugin = plugins
             .get(plug_id)
-            .ok_or_else(|| format!("Cannot find plugin: `{plug_id}`"))
-            .unwrap()
+            .ok_or_else(|| format!("Cannot find plugin: `{plug_id}`"))?
             .write();
 
-        // if !plugin.variables.iter().any(|v| v.id == i) {
-        //     Err(format!(
-        //         "Plugin `{plug_id}` does not have config option `{i}`"
-        //     ));
-        // }
+        if !plugin.variables.iter().any(|v| v.id == i) {
+            return Err(format!(
+                "Plugin `{plug_id}` does not have config option `{i}`"
+            ));
+        }
 
-        _ = plugin
+        plugin
             .set_config_value(i, value.as_ref().to_owned())
-            .inspect_err(|e| tracing::warn!("Failed to set config: {}", e));
+            .inspect_err(|e| tracing::warn!("Failed to set config: {}", e))
     }
 }

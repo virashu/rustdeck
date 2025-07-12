@@ -10,12 +10,16 @@ pub enum IconStoreGetError {
 }
 
 pub struct IconStore {
+    store_path: String,
     icons: HashMap<String, String>,
 }
 
 impl IconStore {
-    pub const fn from_config(icons: HashMap<String, String>) -> Self {
-        Self { icons }
+    pub fn from_config(path: impl AsRef<str>, icons: HashMap<String, String>) -> Self {
+        Self {
+            store_path: path.as_ref().to_owned(),
+            icons,
+        }
     }
 
     pub fn to_config(&self) -> HashMap<String, String> {
@@ -28,9 +32,13 @@ impl IconStore {
     {
         self.icons
             .get(id.as_ref())
-            .map(|p| format!("{}/{p}", &*crate::config::paths::ICONS))
+            .map(|p| format!("{}/{p}", self.store_path))
     }
 
+    /// Get a raw icon
+    ///
+    /// # Errors
+    /// Error is returned if icon is not found or cannot be read
     pub fn get_icon_raw<S>(&self, id: S) -> Result<Vec<u8>, IconStoreGetError>
     where
         S: AsRef<str>,
@@ -41,6 +49,10 @@ impl IconStore {
             .map_err(IconStoreGetError::IoError)
     }
 
+    /// Get a base64-encoded icon
+    ///
+    /// # Errors
+    /// Error is returned if icon is not found or cannot be read
     #[cfg(feature = "icon_store_b64")]
     pub fn get_icon_b64<S>(&self, id: S) -> Result<String, IconStoreGetError>
     where
