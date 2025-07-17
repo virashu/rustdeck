@@ -194,7 +194,7 @@ async fn list_icons(State(state): State<AxumState>) -> Json<Vec<String>> {
     Json(state.deck.get_all_icons())
 }
 
-async fn gt_enum_arg_variants(
+async fn get_enum_arg_variants(
     State(state): State<AxumState>,
     Path(id): Path<String>,
 ) -> Result<Json<Vec<String>>, String> {
@@ -267,7 +267,7 @@ where
         )
         .route(
             "/api/config/get_enum_arg_variants/{id}",
-            get(gt_enum_arg_variants),
+            get(get_enum_arg_variants),
         )
         .with_state(state)
         .layer(cors)
