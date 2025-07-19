@@ -102,7 +102,9 @@ impl Deck {
     pub fn init(&self) {
         self.plugin_store.init_all();
 
-        _ = self.update_config("rustdeck_obs.password".into(), "aaaaaa".into());
+        _ = self
+            .update_config("rustdeck_obs.password".into(), "aaaaaa".into())
+            .inspect_err(|e| tracing::error!(%e));
     }
 
     pub fn run(&self, update_interval: Duration) {

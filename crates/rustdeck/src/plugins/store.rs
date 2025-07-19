@@ -342,7 +342,7 @@ impl PluginStore {
             .ok_or_else(|| format!("Cannot find plugin: `{plug_id}`"))?
             .write();
 
-        if !plugin.variables.iter().any(|v| v.id == i) {
+        if !plugin.config_options.iter().any(|v| v.id == i) {
             return Err(format!(
                 "Plugin `{plug_id}` does not have config option `{i}`"
             ));

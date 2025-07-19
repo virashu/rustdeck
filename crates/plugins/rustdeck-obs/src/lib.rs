@@ -303,6 +303,7 @@ export_plugin! {
         .set_config_value(decorate_fn_set_config_value!(set_config_value))
         .config_option(ConfigOption::new("host", "Host", "The host of the OBS websocket", Type::String))
         .config_option(ConfigOption::new("port", "Port", "The port of the OBS websocket", Type::Int))
+        .config_option(ConfigOption::new("password", "Password", "Websocket password", Type::String))
         .variable(Variable::new("scene", "Scene", Type::String))
         .variable(Variable::new("profile", "Profile", Type::String))
         .variable(Variable::new("is_streaming", "Is Streaming", Type::Bool))
