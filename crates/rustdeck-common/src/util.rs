@@ -27,6 +27,8 @@ impl std::fmt::Display for PtrToStrError {
     }
 }
 
+impl std::error::Error for PtrToStrError {}
+
 /// # Safety
 /// Checks for null pointer
 /// # Errors

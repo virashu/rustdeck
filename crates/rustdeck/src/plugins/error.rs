@@ -1,77 +1,55 @@
 use rustdeck_common::util::PtrToStrError;
 
-#[derive(Debug)]
+#[derive(thiserror::Error, Debug)]
 pub enum PluginLoadError {
     /// Error loading (not a .dll/.so)
-    #[allow(dead_code)]
+    #[error("Not a library")]
     NotALibrary(libloading::Error),
+
     /// Error getting function
-    #[allow(dead_code)]
+    #[error("Plugin missing exported `build` function")]
     SymbolError(libloading::Error),
-    /// Plugin build function returned a null pointer
-    BuildError,
+
     /// Other libloading errors
+    #[error("Error loading library: {0}")]
     GenericLibError(libloading::Error),
+
+    /// Plugin build function returned a null pointer
+    #[error("Plugin build function returned a null pointer")]
+    BuildError,
+
     /// Failed to read string
-    ReadError(PtrToStrError),
+    #[error("Error reading from plugin: {0}")]
+    ReadError(#[from] PtrToStrError),
+
     /// Error with id/name...
+    #[error("Plugin format error: {0}")]
     FormatError(String),
 }
 
-fn win_error_to_err_code(err: &str) -> Result<i32, ()> {
+fn win_error_to_err_code(err: &str) -> Option<i32> {
     err.split_once(',')
-        .ok_or(())?
-        .0
-        .strip_prefix("Os { code: ")
-        .ok_or(())?
-        .parse()
-        .map_err(|_| ())
+        .and_then(|x| x.0.strip_prefix("Os { code: "))
+        .and_then(|x| x.parse().ok())
 }
 
 impl From<libloading::Error> for PluginLoadError {
     fn from(value: libloading::Error) -> Self {
         match value {
-            libloading::Error::LoadLibraryExW { ref source } => {
-                let err_code = win_error_to_err_code(&format!("{source:?}"));
-
-                match err_code {
-                    Ok(193) => Self::NotALibrary(value),
-                    _ => Self::GenericLibError(value),
-                }
+            libloading::Error::LoadLibraryExW { ref source }
+                if win_error_to_err_code(&format!("{source:?}")) == Some(193) =>
+            {
+                Self::NotALibrary(value)
             }
-            libloading::Error::GetProcAddress { ref source } => {
-                let err_code = win_error_to_err_code(&format!("{source:?}"));
-
-                match err_code {
-                    Ok(127) => Self::SymbolError(value),
-                    _ => Self::GenericLibError(value),
-                }
+            libloading::Error::GetProcAddress { ref source }
+                if win_error_to_err_code(&format!("{source:?}")) == Some(127) =>
+            {
+                Self::SymbolError(value)
             }
             _ => Self::GenericLibError(value),
         }
     }
 }
-
-impl From<PtrToStrError> for PluginLoadError {
-    fn from(value: PtrToStrError) -> Self {
-        Self::ReadError(value)
-    }
-}
-
-impl std::fmt::Display for PluginLoadError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::NotALibrary(_) => write!(f, "Not a library"),
-            Self::SymbolError(_) => write!(f, "Plugin missing exported `build` function"),
-            Self::GenericLibError(e) => write!(f, "Error loading library: {e}"),
-            Self::BuildError => write!(f, "Plugin build function returned a null pointer"),
-            Self::ReadError(e) => write!(f, "Error reading from plugin: {e}"),
-            Self::FormatError(e) => write!(f, "Plugin format error: {e}"),
-        }
-    }
-}
-
-impl std::error::Error for PluginLoadError {}
 
 #[derive(thiserror::Error, Debug)]
 #[error("Plugin is not initialized")]
@@ -81,14 +59,19 @@ pub struct InitError();
 pub enum ActionError {
     #[error("Wrong action format: '{0}'")]
     InvalidFormat(String),
+
     #[error("Plugin `{0}` was not found")]
     PluginNotFound(String),
+
     #[error("Action `{action}` was not found for plugin `{plugin}`")]
     ActionNotFound { action: String, plugin: String },
+
     #[error("Arguments for action `{0}` did not pass validation")]
     InvalidArgs(String),
+
     #[error("Plugin returned an error: {0}")]
     PluginError(String),
+
     #[error(transparent)]
     InitError(#[from] InitError),
 }
