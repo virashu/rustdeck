@@ -250,7 +250,9 @@ impl PluginStore {
     }
 
     #[allow(clippy::needless_pass_by_value)]
-    pub fn get_enum_arg_variants(&self, id: String) -> Result<Vec<String>, String> {
+    pub fn get_enum_arg_variants(&self, id: impl AsRef<str>) -> Result<Vec<String>, String> {
+        let id = id.as_ref();
+
         #[allow(clippy::expect_fun_call)]
         let (plug_id, act_id) = id
             .split_once('.')

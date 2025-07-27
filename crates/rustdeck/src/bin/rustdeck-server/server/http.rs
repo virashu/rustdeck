@@ -15,11 +15,11 @@ use tower_http::{
 use rustdeck::{
     buttons::{DeckButtonPos, DeckButtonUpdate, RawDeckButton},
     config::DeckDimensionConfig,
-    deck::{Deck, DeckScreen},
+    deck::Deck,
     icon_store::IconStoreGetError,
     models::{
         PluginAction, PluginActionGroup, PluginConfigOption, PluginConfigOptionGroup, PluginData,
-        PluginVariable, PluginVariableGroup,
+        PluginVariable, PluginVariableGroup, RenderedDeckScreen,
     },
 };
 
@@ -38,7 +38,7 @@ async fn get_config(State(state): State<AxumState>) -> Json<DeckDimensionConfig>
     Json(state.deck.get_dimensions_config())
 }
 
-async fn get_buttons(State(state): State<AxumState>) -> Json<DeckScreen> {
+async fn get_buttons(State(state): State<AxumState>) -> Json<RenderedDeckScreen> {
     Json(state.deck.get_rendered_screen())
 }
 
@@ -59,7 +59,7 @@ async fn handle_switch_screen(State(state): State<AxumState>, Path(id): Path<Str
 async fn handle_new_screen(State(state): State<AxumState>, Path(id): Path<String>) -> StatusCode {
     match state.deck.new_screen(id) {
         Ok(()) => StatusCode::OK,
-        Err(()) => StatusCode::CONFLICT,
+        Err(_) => StatusCode::CONFLICT,
     }
 }
 
@@ -77,7 +77,7 @@ async fn rename_screen(
 ) -> StatusCode {
     match state.deck.rename_screen(&id, new_name) {
         Ok(()) => StatusCode::OK,
-        Err(()) => StatusCode::NOT_FOUND,
+        Err(_) => StatusCode::BAD_REQUEST,
     }
 }
 

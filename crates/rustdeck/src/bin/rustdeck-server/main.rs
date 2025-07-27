@@ -30,6 +30,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     deck.init();
 
+    _ = deck
+        .update_config("rustdeck_obs.password", "aaaaaa")
+        .inspect_err(|e| tracing::error!(%e));
+    _ = deck
+        .update_config("rustdeck_obs.connect_timeout", "1")
+        .inspect_err(|e| tracing::error!(%e));
+
     let deck_ref = deck.clone();
     let deck_thread = thread::spawn(move || deck_ref.run(Duration::from_millis(500)));
 

@@ -9,23 +9,28 @@ use indexmap::IndexMap;
 use parking_lot::RwLock;
 
 use crate::{
-    buttons::{
-        DeckButtonUpdate, RawDeckButton, RawDeckButtonAction, RenderedDeckButton, VariableRenderer,
-    },
+    buttons::{DeckButtonUpdate, RawDeckButton, RawDeckButtonAction, VariableRenderer},
     config::{DeckButtonScreen, DeckConfig, DeckDimensionConfig},
     constants::{DECK_ACTION_ID, DECK_ACTION_NAME, DECK_ACTION_PREFIX},
     icon_store::{IconStore, IconStoreGetError},
     models::{
         PluginAction, PluginActionArgsData, PluginActionGroup, PluginConfigOption,
         PluginConfigOptionGroup, PluginData, PluginVariable, PluginVariableGroup,
+        RenderedDeckScreen,
     },
     plugins::{PluginDataType, PluginStore},
 };
 
-#[derive(Debug, serde::Serialize)]
-pub struct DeckScreen {
-    screen: String,
-    buttons: Vec<RenderedDeckButton>,
+#[derive(thiserror::Error, Debug)]
+#[error("Screen with name {0:?} already exists")]
+pub struct ScreenCreationError(String);
+
+#[derive(thiserror::Error, Debug)]
+pub enum ScreenRenameError {
+    #[error("Screen {0:?} not found")]
+    NotFound(String),
+    #[error("Screen with name {0:?} already exists")]
+    Conflict(String),
 }
 
 pub struct Deck {
@@ -35,8 +40,6 @@ pub struct Deck {
     screens: RwLock<IndexMap<String, DeckButtonScreen>>,
     plugin_store: PluginStore,
     icon_store: IconStore,
-    #[allow(clippy::struct_field_names)]
-
     /// Actions of the deck itself
     actions: PluginActionGroup,
     config_options: PluginConfigOptionGroup,
@@ -102,13 +105,6 @@ impl Deck {
 
     pub fn init(&self) {
         self.plugin_store.init_all();
-
-        _ = self
-            .update_config("rustdeck_obs.password".into(), "aaaaaa".into())
-            .inspect_err(|e| tracing::error!(%e));
-        _ = self
-            .update_config("rustdeck_obs.connect_timeout".into(), "1".into())
-            .inspect_err(|e| tracing::error!(%e));
     }
 
     pub fn run(&self, update_interval: Duration) {
@@ -167,10 +163,7 @@ impl Deck {
     ///
     /// # Errors
     /// Error is returned if icon is not found or cannot be read
-    pub fn get_icon_raw<S>(&self, id: S) -> Result<Vec<u8>, IconStoreGetError>
-    where
-        S: AsRef<str>,
-    {
+    pub fn get_icon_raw(&self, id: impl AsRef<str>) -> Result<Vec<u8>, IconStoreGetError> {
         self.icon_store.get_icon_raw(id)
     }
 
@@ -179,10 +172,7 @@ impl Deck {
     /// # Errors
     /// Error is returned if icon is not found or cannot be read
     #[cfg(feature = "icon_store_b64")]
-    pub fn get_icon_b64<S>(&self, id: S) -> Result<String, IconStoreGetError>
-    where
-        S: AsRef<str>,
-    {
+    pub fn get_icon_b64(&self, id: impl AsRef<str>) -> Result<String, IconStoreGetError> {
         self.icon_store.get_icon_b64(id)
     }
 
@@ -199,11 +189,11 @@ impl Deck {
     }
 
     /// Get a render of currently selected screen
-    pub fn get_rendered_screen(&self) -> DeckScreen {
+    pub fn get_rendered_screen(&self) -> RenderedDeckScreen {
         let mut vars = VariableRenderer::new(&self.plugin_store);
 
         #[allow(clippy::missing_panics_doc)]
-        DeckScreen {
+        RenderedDeckScreen {
             screen: self.current_screen_id.read().clone(),
             buttons: self
                 .screens
@@ -280,8 +270,11 @@ impl Deck {
     ///
     /// # Errors
     /// Error is returned if parsing fails
-    pub fn update_config(&self, id: String, value: String) -> Result<(), String> {
-        match id.as_str() {
+    pub fn update_config(&self, id: impl AsRef<str>, value: impl AsRef<str>) -> Result<(), String> {
+        let id = id.as_ref();
+        let value = value.as_ref();
+
+        match id {
             "deck.dimensions_cols" => {
                 self.config.write().cols = value.parse::<u32>().map_err(|e| e.to_string())?;
             }
@@ -343,25 +336,29 @@ impl Deck {
         success
     }
 
-    pub fn switch_screen(&self, id: String) {
-        if !self.screens.read().contains_key(&id) || *self.current_screen_id.read() == id {
+    pub fn switch_screen(&self, id: impl AsRef<str>) {
+        let id = id.as_ref();
+
+        if !self.screens.read().contains_key(id) || *self.current_screen_id.read() == id {
             return;
         }
 
-        *self.current_screen_id.write() = id;
+        *self.current_screen_id.write() = id.to_string();
     }
 
     /// Create a new blank screen
     ///
     /// # Errors
     /// Error is returned if a screen with given `id` already exists
-    pub fn new_screen(&self, id: String) -> Result<(), ()> {
-        if self.screens.read().contains_key(&id) {
-            return Err(());
+    pub fn new_screen(&self, id: impl AsRef<str>) -> Result<(), ScreenCreationError> {
+        let id = id.as_ref();
+
+        if self.screens.read().contains_key(id) {
+            return Err(ScreenCreationError(String::from(id)));
         }
 
         {
-            self.screens.write().insert(id, HashMap::new());
+            self.screens.write().insert(id.to_string(), HashMap::new());
         }
 
         {
@@ -374,9 +371,19 @@ impl Deck {
     ///
     /// # Errors
     /// Error is returned if `old_id` is incorrect or `new_id` already exists
-    pub fn rename_screen(&self, old_id: &str, new_id: String) -> Result<(), ()> {
-        if !self.screens.read().contains_key(old_id) || self.screens.read().contains_key(&new_id) {
-            return Err(());
+    pub fn rename_screen(
+        &self,
+        old_id: impl AsRef<str>,
+        new_id: impl AsRef<str>,
+    ) -> Result<(), ScreenRenameError> {
+        let old_id = old_id.as_ref();
+        let new_id = new_id.as_ref();
+
+        if !self.screens.read().contains_key(old_id) {
+            return Err(ScreenRenameError::NotFound(String::from(old_id)));
+        }
+        if self.screens.read().contains_key(new_id) {
+            return Err(ScreenRenameError::Conflict(String::from(new_id)));
         }
 
         {
@@ -385,7 +392,7 @@ impl Deck {
             let index = screens_lock.get_index_of(old_id).unwrap();
             #[allow(clippy::missing_panics_doc)]
             let screen = screens_lock.swap_remove(old_id).unwrap();
-            screens_lock.insert(new_id.clone(), screen);
+            screens_lock.insert(new_id.to_string(), screen);
             let last = screens_lock.len() - 1;
             screens_lock.swap_indices(index, last);
         }
@@ -393,7 +400,7 @@ impl Deck {
         {
             let mut current_lock = self.current_screen_id.write();
             if *current_lock == old_id {
-                *current_lock = new_id;
+                *current_lock = new_id.to_string();
             }
         }
 
@@ -404,7 +411,9 @@ impl Deck {
     }
 
     #[allow(clippy::significant_drop_tightening)]
-    pub fn delete_screen(&self, id: &str) -> Result<(), ()> {
+    pub fn delete_screen(&self, id: impl AsRef<str>) -> Result<(), ()> {
+        let id = id.as_ref();
+
         if !self.screens.read().contains_key(id) {
             return Err(());
         }
@@ -462,9 +471,11 @@ impl Deck {
         }
     }
 
-    pub fn get_enum_arg_variants(&self, id: String) -> Result<Vec<String>, String> {
+    pub fn get_enum_arg_variants(&self, id: impl AsRef<str>) -> Result<Vec<String>, String> {
+        let id = id.as_ref();
+
         if id.starts_with(DECK_ACTION_PREFIX) {
-            match id.as_str() {
+            match id {
                 "deck.switch_screen.destination" => {
                     Ok(self.screens.read().keys().cloned().collect())
                 }

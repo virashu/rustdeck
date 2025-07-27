@@ -1,6 +1,6 @@
 use serde::Serialize;
 
-use crate::plugins::PluginDataType;
+use crate::{buttons::RenderedDeckButton, plugins::PluginDataType};
 
 #[derive(Serialize, Clone)]
 pub struct PluginActionArgsData {
@@ -79,4 +79,10 @@ pub struct PluginConfigOptionGroup {
     pub id: String,
     pub name: String,
     pub config_options: Vec<PluginConfigOption>,
+}
+
+#[derive(Debug, serde::Serialize)]
+pub struct RenderedDeckScreen {
+    pub screen: String,
+    pub buttons: Vec<RenderedDeckButton>,
 }
