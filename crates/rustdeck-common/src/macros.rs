@@ -129,10 +129,12 @@ macro_rules! export_plugin {
     };
 }
 
-#[macro_export]
-macro_rules! decl_plugin {
-    /* With actions and variables */
-    (
+#[cfg(feature = "macro-plugin-declaration")]
+pub mod macro_plugin_declaration {
+    #[macro_export]
+    macro_rules! decl_plugin {
+        /* With actions and variables */
+        (
         id: $id:literal,
         name: $name:literal,
         desc: $desc:literal,
@@ -148,35 +150,35 @@ macro_rules! decl_plugin {
 
         $(,)?
     ) => {
-        unsafe {
-            let fn_init = $crate::decorate_fn_init!($user_fn_init);
-            let fn_update = $crate::decorate_fn_update!($user_fn_update);
-            let fn_get_variable = $crate::decorate_fn_get_variable!($user_fn_get_variable);
-            let fn_run_action = $crate::decorate_fn_run_action!($user_fn_run_action);
+            unsafe {
+                let fn_init = $crate::decorate_fn_init!($user_fn_init);
+                let fn_update = $crate::decorate_fn_update!($user_fn_update);
+                let fn_get_variable = $crate::decorate_fn_get_variable!($user_fn_get_variable);
+                let fn_run_action = $crate::decorate_fn_run_action!($user_fn_run_action);
 
-            ::std::boxed::Box::into_raw(::std::boxed::Box::new($crate::proto::Plugin {
-                id: $crate::util::str_to_ptr($id),
-                name: $crate::util::str_to_ptr($name),
-                desc: $crate::util::str_to_ptr($desc),
+                ::std::boxed::Box::into_raw(::std::boxed::Box::new($crate::proto::Plugin {
+                    id: $crate::util::str_to_ptr($id),
+                    name: $crate::util::str_to_ptr($name),
+                    desc: $crate::util::str_to_ptr($desc),
 
-                variables: $variables,
-                actions: $actions,
-                config_options: ::std::ptr::null(),
+                    variables: $variables,
+                    actions: $actions,
+                    config_options: ::std::ptr::null(),
 
-                fn_init: fn_init,
-                fn_update: fn_update,
-                fn_get_variable: fn_get_variable,
-                fn_run_action: fn_run_action,
+                    fn_init: fn_init,
+                    fn_update: fn_update,
+                    fn_get_variable: fn_get_variable,
+                    fn_run_action: fn_run_action,
 
-                fn_get_enum: $user_fn_get_enum,
-                fn_get_config_value: ::std::ptr::null(),
-                fn_set_config_value: ::std::ptr::null(),
-            })) as *const $crate::proto::Plugin
-        }
-    };
+                    fn_get_enum: $user_fn_get_enum,
+                    fn_get_config_value: ::std::ptr::null(),
+                    fn_set_config_value: ::std::ptr::null(),
+                })) as *const $crate::proto::Plugin
+            }
+        };
 
-    /* Without `fn_get_enum` */
-    (
+        /* Without `fn_get_enum` */
+        (
         id: $id:literal,
         name: $name:literal,
         desc: $desc:literal,
@@ -190,22 +192,22 @@ macro_rules! decl_plugin {
 
         $(,)?
     ) => {
-        decl_plugin! {
-            id: $id,
-            name: $name,
-            desc: $desc,
-            variables: $variables,
-            actions: $actions,
-            fn_init: $user_fn_init,
-            fn_update: $user_fn_update,
-            fn_get_variable: $user_fn_get_variable,
-            fn_run_action: $user_fn_run_action,
-            __fn_get_enum: ::std::ptr::null(),
-        }
-    };
+            decl_plugin! {
+                id: $id,
+                name: $name,
+                desc: $desc,
+                variables: $variables,
+                actions: $actions,
+                fn_init: $user_fn_init,
+                fn_update: $user_fn_update,
+                fn_get_variable: $user_fn_get_variable,
+                fn_run_action: $user_fn_run_action,
+                __fn_get_enum: ::std::ptr::null(),
+            }
+        };
 
-    /* With `fn_get_enum` */
-    (
+        /* With `fn_get_enum` */
+        (
         id: $id:literal,
         name: $name:literal,
         desc: $desc:literal,
@@ -221,26 +223,26 @@ macro_rules! decl_plugin {
 
         $(,)?
     ) => {
-        let fn_get_enum_p = $crate::decorate_fn_get_enum!($user_fn_get_enum);
+            let fn_get_enum_p = $crate::decorate_fn_get_enum!($user_fn_get_enum);
 
-        unsafe {
-            decl_plugin! {
-                id: $id,
-                name: $name,
-                desc: $desc,
-                variables: $variables,
-                actions: $actions,
-                fn_init: $user_fn_init,
-                fn_update: $user_fn_update,
-                fn_get_variable: $user_fn_get_variable,
-                fn_run_action: $user_fn_run_action,
-                __fn_get_enum: fn_get_enum_p,
+            unsafe {
+                decl_plugin! {
+                    id: $id,
+                    name: $name,
+                    desc: $desc,
+                    variables: $variables,
+                    actions: $actions,
+                    fn_init: $user_fn_init,
+                    fn_update: $user_fn_update,
+                    fn_get_variable: $user_fn_get_variable,
+                    fn_run_action: $user_fn_run_action,
+                    __fn_get_enum: fn_get_enum_p,
+                }
             }
-        }
-    };
+        };
 
-    /* Without actions nor variables */
-    (
+        /* Without actions nor variables */
+        (
         id: $id:literal,
         name: $name:literal,
         desc: $desc:literal,
@@ -252,21 +254,21 @@ macro_rules! decl_plugin {
 
         $(,)?
     ) => {
-        decl_plugin! {
-            id: $id,
-            name: $name,
-            desc: $desc,
-            variables: ::std::ptr::null(),
-            actions: ::std::ptr::null(),
-            fn_init: $user_fn_init,
-            fn_update: $user_fn_update,
-            fn_get_variable: $user_fn_get_variable,
-            fn_run_action: $user_fn_run_action
-        }
-    };
+            decl_plugin! {
+                id: $id,
+                name: $name,
+                desc: $desc,
+                variables: ::std::ptr::null(),
+                actions: ::std::ptr::null(),
+                fn_init: $user_fn_init,
+                fn_update: $user_fn_update,
+                fn_get_variable: $user_fn_get_variable,
+                fn_run_action: $user_fn_run_action
+            }
+        };
 
-    /* With variables */
-    (
+        /* With variables */
+        (
         id: $id:literal,
         name: $name:literal,
         desc: $desc:literal,
@@ -279,21 +281,21 @@ macro_rules! decl_plugin {
 
         $(,)?
     ) => {
-        decl_plugin! {
-            id: $id,
-            name: $name,
-            desc: $desc,
-            variables: $variables,
-            actions: ::std::ptr::null(),
-            fn_init: $user_fn_init,
-            fn_update: $user_fn_update,
-            fn_get_variable: $user_fn_get_variable,
-            fn_run_action: $user_fn_run_action
-        }
-    };
+            decl_plugin! {
+                id: $id,
+                name: $name,
+                desc: $desc,
+                variables: $variables,
+                actions: ::std::ptr::null(),
+                fn_init: $user_fn_init,
+                fn_update: $user_fn_update,
+                fn_get_variable: $user_fn_get_variable,
+                fn_run_action: $user_fn_run_action
+            }
+        };
 
-    /* With actions */
-    (
+        /* With actions */
+        (
         id: $id:literal,
         name: $name:literal,
         desc: $desc:literal,
@@ -306,22 +308,22 @@ macro_rules! decl_plugin {
 
         $(,)?
     ) => {
-        decl_plugin! {
-            id: $id,
-            name: $name,
-            desc: $desc,
-            variables: ::std::ptr::null(),
-            actions: $actions,
-            fn_init: $user_fn_init,
-            fn_update: $user_fn_update,
-            fn_get_variable: $user_fn_get_variable,
-            fn_run_action: $user_fn_run_action
-        }
-    };
-}
+            decl_plugin! {
+                id: $id,
+                name: $name,
+                desc: $desc,
+                variables: ::std::ptr::null(),
+                actions: $actions,
+                fn_init: $user_fn_init,
+                fn_update: $user_fn_update,
+                fn_get_variable: $user_fn_get_variable,
+                fn_run_action: $user_fn_run_action
+            }
+        };
+    }
 
-#[macro_export]
-macro_rules! variables {
+    #[macro_export]
+    macro_rules! variables {
     (
         $($var:expr),+ $(,)?
     ) => {
@@ -334,26 +336,26 @@ macro_rules! variables {
     };
 }
 
-#[macro_export]
-macro_rules! decl_variable {
-    (
+    #[macro_export]
+    macro_rules! decl_variable {
+        (
         id: $id:literal,
         desc: $desc:literal,
         vtype: $vtype:literal
         $(,)?
     ) => {
-        unsafe {
-            ::std::boxed::Box::into_raw(::std::boxed::Box::new($crate::proto::Variable {
-                id: $crate::util::str_to_ptr($id),
-                desc: $crate::util::str_to_ptr($desc),
-                r#type: $crate::Type::from($vtype).into(),
-            })) as *const $crate::proto::Variable
-        }
-    };
-}
+            unsafe {
+                ::std::boxed::Box::into_raw(::std::boxed::Box::new($crate::proto::Variable {
+                    id: $crate::util::str_to_ptr($id),
+                    desc: $crate::util::str_to_ptr($desc),
+                    r#type: $crate::Type::from($vtype).into(),
+                })) as *const $crate::proto::Variable
+            }
+        };
+    }
 
-#[macro_export]
-macro_rules! actions {
+    #[macro_export]
+    macro_rules! actions {
     (
         $($act:expr),+ $(,)?
     ) => {
@@ -366,42 +368,42 @@ macro_rules! actions {
     };
 }
 
-#[macro_export]
-macro_rules! decl_action {
-    (
+    #[macro_export]
+    macro_rules! decl_action {
+        (
         id: $id:literal,
         name: $name:literal,
         desc: $desc:literal,
         args: $args:expr
         $(,)?
     ) => {
-        unsafe {
-            ::std::boxed::Box::into_raw(::std::boxed::Box::new($crate::proto::Action {
-                id: $crate::util::str_to_ptr($id),
-                name: $crate::util::str_to_ptr($name),
-                desc: $crate::util::str_to_ptr($desc),
-                args: $args,
-            })) as *const $crate::proto::Action
-        }
-    };
+            unsafe {
+                ::std::boxed::Box::into_raw(::std::boxed::Box::new($crate::proto::Action {
+                    id: $crate::util::str_to_ptr($id),
+                    name: $crate::util::str_to_ptr($name),
+                    desc: $crate::util::str_to_ptr($desc),
+                    args: $args,
+                })) as *const $crate::proto::Action
+            }
+        };
 
-    (
+        (
         id: $id:literal,
         name: $name:literal,
         desc: $desc:literal
         $(,)?
     ) => {
-        decl_action! {
-            id: $id,
-            name: $name,
-            desc: $desc,
-            args: ::std::ptr::null(),
-        }
-    };
-}
+            decl_action! {
+                id: $id,
+                name: $name,
+                desc: $desc,
+                args: ::std::ptr::null(),
+            }
+        };
+    }
 
-#[macro_export]
-macro_rules! args {
+    #[macro_export]
+    macro_rules! args {
     (
         $($arg:expr),+ $(,)?
     ) => {
@@ -414,22 +416,23 @@ macro_rules! args {
     };
 }
 
-#[macro_export]
-macro_rules! decl_arg {
-    (
+    #[macro_export]
+    macro_rules! decl_arg {
+        (
         id: $id:literal,
         name: $name:literal,
         desc: $desc:literal,
         vtype: $vtype:literal
         $(,)?
     ) => {
-        unsafe {
-            ::std::boxed::Box::into_raw(::std::boxed::Box::new($crate::proto::ActionArg {
-                id: $crate::util::str_to_ptr($id),
-                name: $crate::util::str_to_ptr($name),
-                desc: $crate::util::str_to_ptr($desc),
-                r#type: $crate::Type::from($vtype).into(),
-            })) as *const $crate::proto::ActionArg
-        }
-    };
+            unsafe {
+                ::std::boxed::Box::into_raw(::std::boxed::Box::new($crate::proto::ActionArg {
+                    id: $crate::util::str_to_ptr($id),
+                    name: $crate::util::str_to_ptr($name),
+                    desc: $crate::util::str_to_ptr($desc),
+                    r#type: $crate::Type::from($vtype).into(),
+                })) as *const $crate::proto::ActionArg
+            }
+        };
+    }
 }
