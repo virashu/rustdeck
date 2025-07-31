@@ -457,7 +457,10 @@ unsafe impl Sync for Plugin {}
 #[cfg(test)]
 mod tests {
     use rustdeck_common::{
-        Args, actions, args, decl_action, decl_arg, decl_plugin, decl_variable, variables,
+        Args, Type, actions, args,
+        builder::{Action, PluginBuilder, Variable},
+        decl_action, decl_arg, decl_plugin, decl_variable, decorate_fn_get_variable,
+        decorate_fn_init, decorate_fn_run_action, decorate_fn_update, variables,
     };
 
     use super::*;
@@ -506,55 +509,22 @@ mod tests {
 
     #[allow(unsafe_op_in_unsafe_fn)]
     fn build() -> *const FFIPlugin {
-        decl_plugin! {
-            id: "test_plugin",
-            name: "Test Plugin",
-            desc: "Test Plugin",
-            variables: variables!(
-                decl_variable! {
-                    id: "counter",
-                    desc: "Counter",
-                    vtype: "int",
-                },
-            ),
-            actions: actions!(
-                decl_action! {
-                    id: "increment",
-                    name: "Increment",
-                    desc: "Increment",
-                },
-                decl_action! {
-                    id: "add",
-                    name: "Add",
-                    desc: "Add",
-                    args: args!(
-                        decl_arg! {
-                            id: "amount",
-                            name: "Amount",
-                            desc: "Amount",
-                            vtype: "int",
-                        },
-                    ),
-                },
-                decl_action! {
-                    id: "print",
-                    name: "Print",
-                    desc: "Print",
-                    args: args!(
-                        decl_arg! {
-                            id: "string",
-                            name: "String",
-                            desc: "String",
-                            vtype: "string",
-                        },
-                    ),
-                }
-            ),
-            fn_init: init,
-            fn_update: update,
-            fn_get_variable: get_variable,
-            fn_run_action: run_action,
-        }
+        PluginBuilder::new("test_plugin", "Test Plugin", "Test Plugin")
+            .variable(Variable::new("counter", "Counter", Type::Int))
+            .action(Action::new("increment", "Increment", "Increment"))
+            .action(Action::new("add", "Add", "Add").arg("amount", "Amount", "Amount", Type::Int))
+            .action(Action::new("print", "Print", "Print").arg(
+                "string",
+                "String",
+                "String",
+                Type::String,
+            ))
+            .init(decorate_fn_init!(init))
+            .update(decorate_fn_update!(update))
+            .get_variable(decorate_fn_get_variable!(get_variable))
+            .run_action(decorate_fn_run_action!(run_action))
+            .build()
+            .unwrap()
     }
 
     #[test]
