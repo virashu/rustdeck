@@ -1,5 +1,6 @@
 use std::{collections::HashMap, io, path::Path};
 
+use indexmap::IndexMap;
 use parking_lot::RwLock;
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 
@@ -15,7 +16,7 @@ use crate::{
 use super::{Plugin, error::ActionError, load_plugins_at, util::timeout};
 
 pub struct PluginStore {
-    plugins: RwLock<HashMap<String, RwLock<Plugin>>>,
+    plugins: RwLock<IndexMap<String, RwLock<Plugin>>>,
     variable_cache: RwLock<HashMap<String, String>>,
 }
 

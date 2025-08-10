@@ -12,10 +12,11 @@ pub struct TimeoutError {
 
 /// Block on execution of `func` and return its result.
 /// Returns [`TimeoutError`] if `func` took more time than `dur` to complete.
-pub fn timeout<F: FnOnce() -> T + Send, T: Send>(
-    func: F,
-    dur: Duration,
-) -> Result<T, TimeoutError> {
+pub fn timeout<F, T>(func: F, dur: Duration) -> Result<T, TimeoutError>
+where
+    F: FnOnce() -> T + Send,
+    T: Send,
+{
     thread::scope(|s| {
         let handle = s.spawn(func);
 

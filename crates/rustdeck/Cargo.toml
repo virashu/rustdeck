@@ -4,24 +4,33 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-axum = "0.8.4"
-base64 = { version = "0.22.1", optional = true}
-indexmap = { version = "2.9.0", features = ["serde"] }
-libloading = "0.8.5"
-parking_lot = { version = "0.12.4", features = ["deadlock_detection"] }
-rayon = "1.10.0"
-regex = "1.11.1"
+base64 = { version = "0.22.1", optional = true, default-features = false, features = [
+  "std",
+  "alloc",
+] }
+indexmap = { version = "2.9.0", default-features = false, features = [
+  "std",
+  "serde",
+  "rayon",
+] }
+libloading = { version = "0.8.5", default-features = false }
+parking_lot = { version = "0.12.4", default-features = false, features = [
+  "deadlock_detection",
+] }
+rayon = { version = "1.10.0", default-features = false }
+regex = { version = "1.11.1", default-features = false, features = [
+  "perf",
+  "std",
+  "unicode",
+] }
 rustdeck-common = { path = "../rustdeck-common" }
-serde = { version = "1.0.219", features = ["derive"] }
-serde_json = "1.0.140"
-thiserror = "2.0.12"
-tokio = "1.45.1"
-tower-http = { version = "0.6.4", features = ["cors", "trace"] }
-tracing = "0.1.41"
-tracing-subscriber = "0.3.19"
+serde = { version = "1.0.219", default-features = false, features = [
+  "std",
+  "derive",
+] }
+thiserror = { version = "2.0.12", default-features = false, features = ["std"] }
+tracing = { version = "0.1.41", default-features = false, features = ["std"] }
 
 [features]
 default = ["icon_store_b64"]
 icon_store_b64 = ["dep:base64"]
-# Enables storing plugins and icons local to executable, instead of current working directory (cwd)
-portable = []
