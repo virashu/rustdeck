@@ -113,6 +113,27 @@ pub struct PluginBuilder {
 }
 
 impl PluginBuilder {
+    /// # Examples
+    ///
+    /// ```
+    /// use rustdeck_common::{builder::PluginBuilder, proto::Plugin, Args};
+    /// use rustdeck_common::{
+    ///     decorate_fn_init, decorate_fn_update, decorate_fn_get_variable, decorate_fn_run_action
+    /// };
+    ///
+    /// fn init() {}
+    /// fn update(_: &()) {}
+    /// fn get_variable(_: &(), _: &str) {}
+    /// fn run_action(_: &(), _: &str, _: &Args) {}
+    ///
+    /// let builder = PluginBuilder::new("plug_id", "Plugin name", "A long description")
+    ///     .init(decorate_fn_init!(init))
+    ///     .update(decorate_fn_update!(update))
+    ///     .get_variable(decorate_fn_get_variable!(get_variable))
+    ///     .run_action(decorate_fn_run_action!(run_action));
+    /// 
+    /// let plugin: *const Plugin = builder.build().unwrap();
+    /// ```
     pub fn new(id: impl AsRef<str>, name: impl AsRef<str>, desc: impl AsRef<str>) -> Self {
         Self {
             id: id.as_ref().to_owned(),
